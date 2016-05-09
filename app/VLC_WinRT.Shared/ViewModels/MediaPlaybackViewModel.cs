@@ -45,6 +45,7 @@ using VLC_WinRT.Commands.VideoPlayer;
 using VLC_WinRT.Commands.VideoLibrary;
 using VLC_WinRT.SharedBackground.Database;
 using System.Linq;
+using VLC_WinRT.Helpers.UIHelpers;
 
 namespace VLC_WinRT.ViewModels
 {
@@ -689,7 +690,9 @@ namespace VLC_WinRT.ViewModels
                     }
                     else
                     {
+#if WINDOWS_PHONE_APP
                         ToastHelper.Basic(Strings.FailFilePlayBackground, false, "background");
+#endif
                         _playerEngine = PlayerEngine.VLC;
                         _mediaService.Stop();
                     }
@@ -769,10 +772,20 @@ namespace VLC_WinRT.ViewModels
             {
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
                 {
-                    var md = new MessageDialog(Strings.MediaCantBeRead, Strings.Sorry);
+                    if (!Locator.MainVM.IsInternet && IsStream)
+                    {
 #if WINDOWS_UWP
-                    await md.ShowQueuedAsync();
+                        await DialogHelper.DisplayDialog(Strings.ConnectionLostPleaseCheck, Strings.Sorry);
 #else
+                        var lostStreamDialog = new MessageDialog(Strings.ConnectionLostPleaseCheck, Strings.Sorry);
+                        await lostStreamDialog.ShowAsyncQueue();
+#endif
+                    }
+
+#if WINDOWS_UWP
+                    await DialogHelper.DisplayDialog(Strings.MediaCantBeRead, Strings.Sorry);
+#else
+                    var md = new MessageDialog(Strings.MediaCantBeRead, Strings.Sorry);
                     await md.ShowAsyncQueue();
 #endif
                     // ensure we call Stop so we unregister all events
@@ -952,9 +965,9 @@ namespace VLC_WinRT.ViewModels
         {
             _mediaService.Stop();
         }
-        #endregion
+#endregion
 
-        #region Events
+#region Events
         private async void PlayerStateChanged(object sender, MediaState e)
         {
             try
@@ -1092,9 +1105,9 @@ namespace VLC_WinRT.ViewModels
                 OnPropertyChanged(nameof(CurrentChapter));
             });
         }
-        #endregion
+#endregion
 
-        #region MediaTransportControls
+#region MediaTransportControls
 
         public void SetMediaTransportControls(SystemMediaTransportControls systemMediaTransportControls)
         {
@@ -1229,7 +1242,7 @@ namespace VLC_WinRT.ViewModels
             {
             }
         }
-        #endregion
+#endregion
 
         public void Pause()
         {
