@@ -183,9 +183,9 @@ namespace VLC_WinRT.Services.RunTime
         public string GetAlbumUrl(Media media)
         {
             if (media == null) return null;
-            if (!media.isParsed())
+            if (media.parseStatus() == libVLCX.ParseStatus.Init)
                 media.parse();
-            if (!media.isParsed())
+            if (media.parseStatus() == libVLCX.ParseStatus.Failed)
                 return null;
             var url = media.meta(MediaMeta.ArtworkURL);
             if (!string.IsNullOrEmpty(url))
@@ -196,9 +196,9 @@ namespace VLC_WinRT.Services.RunTime
         public MediaProperties GetVideoProperties(Media media)
         {
             if (media == null) return null;
-            if (!media.isParsed())
+            if (media.parseStatus() == libVLCX.ParseStatus.Init)
                 media.parse();
-            if (!media.isParsed())
+            if (media.parseStatus() == libVLCX.ParseStatus.Failed)
                 return null;
             var mP = new MediaProperties();
             mP.Title = media.meta(MediaMeta.Title);
@@ -236,9 +236,9 @@ namespace VLC_WinRT.Services.RunTime
         public MediaProperties GetMusicProperties(Media media)
         {
             if (media == null) return null;
-            if (!media.isParsed())
+            if (media.parseStatus() == libVLCX.ParseStatus.Init)
                 media.parse();
-            if (!media.isParsed())
+            if (media.parseStatus() == libVLCX.ParseStatus.Failed)
                 return null;
             var mP = new MediaProperties();
             mP.AlbumArtist = media.meta(MediaMeta.AlbumArtist);
@@ -282,7 +282,7 @@ namespace VLC_WinRT.Services.RunTime
         {
             if (media == null) return TimeSpan.Zero;
             media.parse();
-            if (!media.isParsed())
+            if (media.parseStatus() != ParseStatus.Done)
                 return TimeSpan.Zero;
             var durationLong = media.duration();
             return TimeSpan.FromMilliseconds(durationLong);
@@ -408,7 +408,8 @@ namespace VLC_WinRT.Services.RunTime
         }
         #endregion
         #region Service Discoverer
-        public event Action<Media> OnSDItemAdded;
+        public event Action<Media, bool> OnSDItemAdded;
+        MediaDiscoverer discoverer;
         public async Task<bool> InitDiscoverer()
         {
             if (Instance == null)
@@ -416,32 +417,36 @@ namespace VLC_WinRT.Services.RunTime
                 await Initialize();
             }
             await PlayerInstanceReady.Task;
-            MediaDiscoverer discoverer = new MediaDiscoverer(Instance, "smb");
+            discoverer = new MediaDiscoverer(Instance, "microdns");
             var mediaList = discoverer.mediaList();
             if (mediaList == null)
                 return false;
 
             var eventManager = mediaList.eventManager();
-            eventManager.onItemAdded += EventManager_onItemAdded;
-            discoverer.start();
+            eventManager.onItemAdded += EventManager_onRootItemAdded;
 
+            discoverer.start();
             return true;
         }
 
-        void DiscoverMediaList(Media media)
+        public void DiscoverMediaList(Media media)
         {
-            var items = media.subItems();
-            var em = items.eventManager();
-
-            em.onItemAdded += EventManager_onItemAdded;
             
+            if (media.parseStatus() == libVLCX.ParseStatus.Done)
+                return;
+            //media.eventManager().OnParsedStatus += (libVLCX.ParseStatus s) =>
+            //{
+            //    if (s != ParseStatus.Done)
+            //        return;
+            //    // do stuff
+            //    var items = media.subItems();
+            //};
+            media.parseWithOptions(ParseFlags.FetchLocal | ParseFlags.FetchNetwork | ParseFlags.Local | ParseFlags.Network);
         }
         
-        private void EventManager_onItemAdded(Media __param0, int __param1)
+        private void EventManager_onRootItemAdded(Media media, int __param1)
         {
-            __param0.parseWithOptions(ParseFlags.FetchLocal | ParseFlags.FetchNetwork | ParseFlags.Local | ParseFlags.Network);
-            Debug.WriteLine(__param0.meta(MediaMeta.Title));
-            OnSDItemAdded?.Invoke(__param0);
+            OnSDItemAdded?.Invoke(media, true);
         }
 
         #endregion
