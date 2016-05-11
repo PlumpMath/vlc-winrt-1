@@ -13,11 +13,16 @@ using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 
-namespace VLC_WinRT.Views.VariousPages
+// The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=234238
+
+namespace VLC_WinRT.UI.Legacy.Views.VideoPages.TVShowsViews
 {
-    public sealed partial class LicensePage
+    /// <summary>
+    /// An empty page that can be used on its own or navigated to within a Frame.
+    /// </summary>
+    public sealed partial class ShowEpisodesView : Page
     {
-        public LicensePage()
+        public ShowEpisodesView()
         {
             this.InitializeComponent();
         }

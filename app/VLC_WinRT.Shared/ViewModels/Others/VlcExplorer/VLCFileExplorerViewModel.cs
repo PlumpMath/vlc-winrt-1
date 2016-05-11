@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using VLC_WinRT.Utils;
 using Windows.UI.Core;
 using System.Linq;
+using System.Diagnostics;
 
 namespace VLC_WinRT.ViewModels.Others.VlcExplorer
 {
@@ -32,21 +33,20 @@ namespace VLC_WinRT.ViewModels.Others.VlcExplorer
                 var currentMedia = BackStack.Last().Media;
                 if (currentMedia == null)
                     return;
-                Locator.VLCService.OnSDItemAdded += VLCService_OnSDItemAdded;
-                Locator.VLCService.DiscoverMediaList(currentMedia);
+                var mediaList = await Locator.VLCService.DiscoverMediaList(currentMedia);
+                for (int i = 0; i < mediaList.count(); i++)
+                {
+                    var media = mediaList.itemAtIndex(i);
+                    var storageItem = new VLCStorageFile(media);
+                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => StorageItems.Add(storageItem));
+                }
             }
             catch (Exception e)
             {
-
+                Debug.WriteLine($"Exception when getting network files {e.ToString()}");
             }
         }
-
-        private void VLCService_OnSDItemAdded(Media media, bool root)
-        {
-            if (!root)
-                StorageItems.Add(new VLCStorageFile(media));
-        }
-
+        
         public override async Task NavigateTo(IVLCStorageItem storageItem)
         {
             var item = storageItem as VLCStorageFolder;

@@ -49,11 +49,6 @@
                     <DiscreteObjectKeyFrame KeyTime="0:0:0.8"
                                             Value="Collapsed" />
                 </ObjectAnimationUsingKeyFrames>
-                <ObjectAnimationUsingKeyFrames Storyboard.TargetName="HeaderGrid"
-                                               Storyboard.TargetProperty="Visibility">
-                    <DiscreteObjectKeyFrame KeyTime="0:0:0.8"
-                                            Value="Collapsed" />
-                </ObjectAnimationUsingKeyFrames>
             </Storyboard>
             <Storyboard x:Name="FadeIn">
                 <ObjectAnimationUsingKeyFrames Storyboard.TargetName="ControlsGrid"
@@ -185,6 +180,20 @@
                                       Margin="{StaticResource FrameMarginHorizontal}">
                             <AppBarButton.Icon>
                                 <FontIcon Glyph="{StaticResource ReduceWindow}"
+                                          FontFamily="{StaticResource VLCFont}"
+                                          FontSize="22" />
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+                        <AppBarButton Name="FullscreenToggle"
+                                      IsCompact="True"
+                                      IsTabStop="False"
+                                      HorizontalAlignment="Stretch"
+                                      VerticalAlignment="Stretch"
+                                      Style="{StaticResource AppBarButtonStyleHuge}"
+                                      Margin="{StaticResource FrameMarginHorizontal}"
+                                      Click="FullscreenToggle_Click">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="{StaticResource ExpandWindow}"
                                           FontFamily="{StaticResource VLCFont}"
                                           FontSize="22" />
                             </AppBarButton.Icon>
