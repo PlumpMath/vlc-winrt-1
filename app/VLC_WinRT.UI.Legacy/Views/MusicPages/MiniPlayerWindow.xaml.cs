@@ -30,6 +30,7 @@ namespace VLC_WinRT.UI.Legacy.Views.MusicPages
         private void MiniPlayerWindow_Loaded(object sender, RoutedEventArgs e)
         {
             this.SizeChanged += MiniPlayerWindow_SizeChanged;
+            this.Unloaded += MiniPlayerWindow_Unloaded;
             Initialize();
             Responsive();
 #if WINDOWS_UWP
@@ -37,7 +38,12 @@ namespace VLC_WinRT.UI.Legacy.Views.MusicPages
             AppViewHelper.SetAppView(true);
             AppViewHelper.SetTitleBar(DraggableGrid);
 #endif
-            App.SplitShell.FooterVisibility = Visibility.Collapsed;
+            App.SplitShell.FooterVisibility = AppBarClosedDisplayMode.Hidden;
+        }
+
+        private void MiniPlayerWindow_Unloaded(object sender, RoutedEventArgs e)
+        {
+            App.SplitShell.FooterVisibility = AppBarClosedDisplayMode.Compact;
         }
 
         private void MiniPlayerWindow_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -211,7 +217,7 @@ namespace VLC_WinRT.UI.Legacy.Views.MusicPages
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () => CoreApplication.MainView.CoreWindow.Activate());
         }
 
-        private async void ExpandWindow_Click(object sender, RoutedEventArgs e)
+        private void ExpandWindow_Click(object sender, RoutedEventArgs e)
         {
             Locator.NavigationService.GoBack_Specific();
         }

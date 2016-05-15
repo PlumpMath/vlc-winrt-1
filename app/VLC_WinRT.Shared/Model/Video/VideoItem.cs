@@ -25,7 +25,7 @@ using Windows.UI.Xaml.Media.Imaging;
 
 namespace VLC_WinRT.Model.Video
 {
-    public class VideoItem : BindableBase, IVLCMedia
+    public class VideoItem : BindableBase, IMediaItem
     {
         #region private props
         private char _alphaKey;
@@ -218,8 +218,11 @@ namespace VLC_WinRT.Model.Video
         public Boolean IsCameraRoll { get; set; }
 
         private string _filePath;
-        
+
         public bool IsCurrentPlaying { get; set; }
+
+        [Ignore]
+        public Media VlcMedia { get; set; }
 
         #endregion
 

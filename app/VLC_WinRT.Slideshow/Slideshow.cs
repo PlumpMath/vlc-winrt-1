@@ -76,45 +76,16 @@ namespace Slide2D
             slideshow.Draw(sender, args);
         }
 
-        private async void Canvas_CreateResources(CanvasAnimatedControl sender,
+        private void Canvas_CreateResources(CanvasAnimatedControl sender,
             Microsoft.Graphics.Canvas.UI.CanvasCreateResourcesEventArgs args)
         {
             IsLoaded.TrySetResult(true);
         }
-
-        public void SetText(List<Txt> texts)
-        {
-            slideshow.Texts.Clear();
-            var id = 0;
-            foreach (var txt in texts)
-            {
-                txt.Id = id;
-                id++;
-            }
-            slideshow.Texts.AddRange(texts);
-        }
-
-        public void ClearTextList()
-        {
-            slideshow.Texts.Clear();
-        }
-
+        
         public bool IsPaused
         {
             get { return canvas != null && canvas.Paused; }
             set { if (canvas != null) canvas.Paused = value; }
-        }
-
-        public bool RichAnimations
-        {
-            get { return slideshow.RichAnimations; }
-            set { slideshow.RichAnimations = value; }
-        }
-
-        public bool TextInSlideshowEnabled
-        {
-            get { return slideshow.TextInSlideshowEnabled; }
-            set { slideshow.TextInSlideshowEnabled = value; }
         }
     }
 }

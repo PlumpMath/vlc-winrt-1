@@ -25,6 +25,7 @@ using VLC_WinRT.UI.Legacy.Views.MusicPages.ArtistPageControls;
 using VLC_WinRT.Utils;
 using Panel = VLC_WinRT.Model.Panel;
 using Windows.UI.Core;
+using VLC_WinRT.UI.Legacy.Views.VideoPages.TVShowsViews;
 #if WINDOWS_UWP
 using VLC_WinRT.UI.UWP.Views.SettingsPages;
 #else
@@ -65,8 +66,8 @@ namespace VLC_WinRT.Services.RunTime
             }
 #endif
             App.RootPage.NavigationFrame.Navigated += NavigationFrame_Navigated;
-            App.SplitShell.RightSidebarNavigated += SplitShell_RightSidebarNavigated;
-            App.SplitShell.RightSidebarClosed += SplitShell_RightSidebarClosed;
+            App.SplitShell.FlyoutNavigated += SplitShell_FlyoutNavigated;
+            App.SplitShell.FlyoutClosed += SplitShell_FlyoutClosed;
             HomePageNavigated += NavigationService_HomePageNavigated;
             Locator.MainVM.PropertyChanged += MainVM_PropertyChanged;
         }
@@ -84,12 +85,12 @@ namespace VLC_WinRT.Services.RunTime
             VLCPageNavigated(homepage);
         }
 
-        private void SplitShell_RightSidebarNavigated(object sender, EventArgs p)
+        private void SplitShell_FlyoutNavigated(object sender, EventArgs p)
         {
             VLCPageNavigated(currentFlyout);
         }
 
-        private void SplitShell_RightSidebarClosed(object sender, EventArgs e)
+        private void SplitShell_FlyoutClosed(object sender, EventArgs e)
         {
             VLCPageNavigated(PageTypeToVLCPage(App.ApplicationFrame.CurrentSourcePageType));
         }
@@ -165,7 +166,7 @@ namespace VLC_WinRT.Services.RunTime
                     GoBack_HideFlyout();
                     break;
                 case VLCPage.AddAlbumToPlaylistDialog:
-                    GoBack_HideFlyout();
+                    Go(VLCPage.AlbumPage);
                     break;
                 case VLCPage.CreateNewPlaylistDialog:
                     GoBack_HideFlyout();
@@ -203,6 +204,9 @@ namespace VLC_WinRT.Services.RunTime
                     GoBack_Default();
                     break;
                 case VLCPage.FeedbackPage:
+                    GoBack_HideFlyout();
+                    break;
+                case VLCPage.TvShowView:
                     GoBack_HideFlyout();
                     break;
                 default:
@@ -355,6 +359,9 @@ namespace VLC_WinRT.Services.RunTime
                 case VLCPage.FeedbackPage:
                     App.SplitShell.FlyoutContent = typeof(FeedbackPage);
                     break;
+                case VLCPage.TvShowView:
+                    App.SplitShell.FlyoutContent = typeof(ShowEpisodesView);
+                    break;
                 default:
                     break;
             }
@@ -377,7 +384,8 @@ namespace VLC_WinRT.Services.RunTime
                    page == VLCPage.SettingsPageVideo ||
                    page == VLCPage.SettingsPage ||
                    page == VLCPage.VideoPlayerOptionsPanel ||
-                   page == VLCPage.FeedbackPage;
+                   page == VLCPage.FeedbackPage ||
+                   page == VLCPage.TvShowView;
         }
 
         VLCPage PageTypeToVLCPage(Type page)

@@ -83,10 +83,10 @@ namespace VLC_WinRT.ViewModels
         public ActionCommand GotoSearchPageCommand { get; } = new ActionCommand(() => Locator.NavigationService.Go(VLCPage.SearchPage));
 
         public ActionCommand GoToFeedbackPageCommand { get; } = new ActionCommand(() => Locator.NavigationService.Go(VLCPage.FeedbackPage));
-        public ActionCommand GoToStreamPanel { get; } = new ActionCommand(() => Locator.MainVM.OpenStreamFlyout());
-        
+        public ActionCommand GoToStreamPanel { get; } = new ActionCommand(() => Locator.NavigationService.Go(VLCPage.MainPageNetwork));
+
         public CreateMiniPlayerView CreateMiniPlayerView { get; } = new CreateMiniPlayerView();
-        
+
         public ScrollDetectedCommand ScrollDetectedCommand { get; } = new ScrollDetectedCommand();
 
         public bool PreventAppExit
@@ -130,20 +130,13 @@ namespace VLC_WinRT.ViewModels
             networkListenerService = App.Container.Resolve<NetworkListenerService>();
             networkListenerService.InternetConnectionChanged += networkListenerService_InternetConnectionChanged;
             _isInternet = NetworkListenerService.IsConnected;
-            
+
             Panels.Add(new Panel(Strings.Videos, VLCPage.MainPageVideo, App.Current.Resources["VideoSymbol"].ToString(), App.Current.Resources["VideoFilledSymbol"].ToString()));
-            Panels.Add(new Panel(Strings.Music, VLCPage.MainPageMusic, App.Current.Resources["MusicSymbol"].ToString(), App.Current.Resources["MusicFilledSymbol"].ToString()));
+            Panels.Add(new Panel(Strings.Music, VLCPage.MainPageMusic, App.Current.Resources["WaveSymbol"].ToString(), App.Current.Resources["WaveFilledSymbol"].ToString()));
             Panels.Add(new Panel(Strings.FileExplorer, VLCPage.MainPageFileExplorer, App.Current.Resources["FileExplorerSymbol"].ToString(), App.Current.Resources["FileExplorerFilledSymbol"].ToString()));
             Panels.Add(new Panel(Strings.Network, VLCPage.MainPageNetwork, App.Current.Resources["StreamSymbol"].ToString(), App.Current.Resources["StreamFilledSymbol"].ToString()));
 
             CoreWindow.GetForCurrentThread().Activated += ApplicationState_Activated;
-            InitializeSlideshow();
-        }
-
-        private async void InitializeSlideshow()
-        {
-            await Locator.Slideshow.IsLoaded.Task;
-            Locator.Slideshow.RichAnimations = Locator.SettingsVM.RichAnimations;
         }
 
         private void ApplicationState_Activated(object sender, WindowActivatedEventArgs e)
@@ -173,19 +166,11 @@ namespace VLC_WinRT.ViewModels
         {
             await App.Dispatcher?.RunAsync(CoreDispatcherPriority.Normal, () => IsInternet = e.IsConnected);
         }
-
-        public void OpenStreamFlyout()
-        {
-            Locator.NavigationService.Go(VLCPage.MainPageNetwork);
-        }
-
+        
         public ObservableCollection<Panel> Panels
         {
             get { return _panels; }
-            set
-            {
-                SetProperty(ref _panels, value);
-            }
+            set { SetProperty(ref _panels, value); }
         }
     }
 }

@@ -37,31 +37,20 @@ namespace Slide2D.Images
         // Debug only, to slow down frames
         int threshold = 0;
 
-        // ------
-        public bool TextInSlideshowEnabled;
-
         private int frame = 0;
         private bool fastChange;
         private bool clearSlideshow;
         private float blurAmount = MaximumBlur;
-        
-        public List<Txt> Texts = new List<Txt>();
+
         private int ImgIndex = 0;
 
         private Img currentImg;
         private List<Img> images = new List<Img>();
 
-        private bool _richAnimations;
-
-        public bool RichAnimations
-        {
-            get { return _richAnimations; }
-            set { _richAnimations = value; }
-        }
-
         public ImgSlideshow()
         {
             Locator.MusicPlayerVM.PropertyChanged += MusicPlayerVM_PropertyChanged;
+            Navigated();
         }
 
         private void MusicPlayerVM_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -77,12 +66,9 @@ namespace Slide2D.Images
             var newPic = false;
             if (Locator.NavigationService.CurrentPage == VLCPage.MusicPlayerPage)
             {
-                if (Locator.MusicPlayerVM.CurrentArtist == null) return;
-                if (Locator.MusicPlayerVM.CurrentArtist.IsPictureLoaded)
-                {
-                    images.Add(new Img(Locator.MusicPlayerVM.CurrentArtist.Picture));
-                    newPic = true;
-                }
+                if (Locator.MusicPlayerVM.CurrentArtist == null)
+                    return;
+
                 var album = await Locator.MediaLibrary.LoadAlbum(Locator.MusicPlayerVM.CurrentTrack.AlbumId);
                 if (album != null)
                 {
@@ -126,18 +112,10 @@ namespace Slide2D.Images
                     {
                         // Set Default values
                         currentImg.Opacity = 0;
-                        if (_richAnimations)
-                        {
-                            blurAmount = MaximumBlur;
-                        }
-                        else
-                        {
-                            blurAmount = 4f;
-                        }
+                        blurAmount = MaximumBlur;
                     }
 
-                    if (_richAnimations)
-                        blurAmount -= 0.025f;
+                    blurAmount -= 0.025f;
                 }
                 else if (frame <= OutroFrameThreshold)
                 {
@@ -148,10 +126,7 @@ namespace Slide2D.Images
                 }
                 else if (frame < 1000)
                 {
-                    if (_richAnimations)
-                    {
-                        blurAmount += 0.025f;
-                    }
+                    blurAmount += 0.025f;
                 }
 
                 if (computeBlurPic)
@@ -184,9 +159,14 @@ namespace Slide2D.Images
                 // which you can't use to make vectors. So... we can't use this yet until we can figure out what's wrong here.
                 if (currentImg.GaussianBlurCache == null) return;
 
-                var scaleEffect = new ScaleEffect()
+                var saturationEffect = new SaturationEffect()
                 {
                     Source = currentImg.GaussianBlurCache,
+                    Saturation = 1f,
+                };
+                var scaleEffect = new ScaleEffect()
+                {
+                    Source = saturationEffect,
                     Scale = new System.Numerics.Vector2()
                     {
                         X = currentImg.Scale,
@@ -194,11 +174,7 @@ namespace Slide2D.Images
                     },
                 };
 
-                scaleEffect.CenterPoint = new System.Numerics.Vector2()
-                {
-                    X = 0,
-                    Y = 0
-                };
+                scaleEffect.CenterPoint = new System.Numerics.Vector2() { X = 0, Y = 0 };
 
                 currentImg.ScaleEffect = scaleEffect;
 
@@ -226,14 +202,6 @@ namespace Slide2D.Images
         {
             if (currentImg?.ScaleEffect != null)
             {
-                if (TextInSlideshowEnabled)
-                {
-                    var txts = Texts.ToList();
-                    foreach (var text in txts)
-                    {
-                        text.Draw(ref args, ref txts);
-                    }
-                }
                 args.DrawingSession.DrawImage(currentImg.ScaleEffect, new System.Numerics.Vector2(), new Rect()
                 {
                     Height = MetroSlideshow.WindowHeight,

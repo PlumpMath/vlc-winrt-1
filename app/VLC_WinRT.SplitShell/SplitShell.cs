@@ -11,8 +11,8 @@ using VLC_WinRT.Helpers;
 namespace VLC_WinRT.Controls
 {
     public delegate void FlyoutCloseRequested(object sender, EventArgs e);
-    public delegate void RightSidebarNavigated(object sender, EventArgs p);
-    public delegate void RightSidebarClosed(object sender, EventArgs e);
+    public delegate void FlyoutNavigated(object sender, EventArgs p);
+    public delegate void FlyoutClosed(object sender, EventArgs e);
     public delegate void ContentSizeChanged(double newWidth);
     
     [TemplatePart(Name = ContentPresenterName, Type = typeof(ContentPresenter))]
@@ -22,20 +22,17 @@ namespace VLC_WinRT.Controls
     [TemplatePart(Name = FlyoutPlaneProjectionName, Type = typeof(PlaneProjection))]
     [TemplatePart(Name = FlyoutGridContainerName, Type = typeof(Grid))]
     [TemplatePart(Name = FlyoutBackgroundGridName, Type = typeof(Grid))]
-    [TemplatePart(Name = FooterContentPresenterName, Type = typeof(ContentPresenter))]
     public sealed class SplitShell : Control
     {
         public event FlyoutCloseRequested FlyoutCloseRequested;
-        public event RightSidebarNavigated RightSidebarNavigated;
-        public event RightSidebarClosed RightSidebarClosed;
+        public event FlyoutNavigated FlyoutNavigated;
+        public event FlyoutClosed FlyoutClosed;
         public event ContentSizeChanged ContentSizeChanged;
         public TaskCompletionSource<bool> TemplateApplied = new TaskCompletionSource<bool>();
         
-        private DispatcherTimer _windowResizerTimer = new DispatcherTimer()
-        {
-            Interval = TimeSpan.FromMilliseconds(200)
-        };
+        private DispatcherTimer _windowResizerTimer = new DispatcherTimer() { Interval = TimeSpan.FromMilliseconds(200) };
 
+        private const string PageName = "Page";
         private const string ContentPresenterName = "ContentPresenter";
         private const string FlyoutContentPresenterName = "FlyoutContentPresenter";
         private const string FlyoutFadeInName = "FlyoutFadeIn";
@@ -45,13 +42,12 @@ namespace VLC_WinRT.Controls
         private const string FlyoutPlaneProjectionName = "FlyoutPlaneProjection";
         private const string FlyoutGridContainerName = "FlyoutGridContainer";
         private const string FlyoutBackgroundGridName = "FlyoutBackgroundGrid";
-        private const string FooterContentPresenterName = "FooterContentPresenter";
 
+        private Page _page;
         private Grid _flyoutGridContainer;
         private Grid _flyoutBackgroundGrid;
         private ContentPresenter _contentPresenter;
         private Frame _flyoutContentPresenter;
-        private ContentPresenter _footerContentPresenter;
 
         private PlaneProjection _flyoutPlaneProjection;
         private Storyboard _flyoutFadeIn;
@@ -59,13 +55,15 @@ namespace VLC_WinRT.Controls
         private Storyboard _topBarFadeOut;
         private Storyboard _topBarFadeIn;
 
+        private AppBarClosedDisplayMode _previousAppBarClosedDisplayMode;
+
         public async void SetContentPresenter(object contentPresenter)
         {
             await TemplateApplied.Task;
             _contentPresenter.Content = contentPresenter;
         }
         
-        public async void SetRightPaneContentPresenter(object content)
+        public async void SetFlyoutContentPresenter(object content)
         {
             await TemplateApplied.Task;
             _flyoutContentPresenter.Navigate((Type)content);
@@ -75,12 +73,18 @@ namespace VLC_WinRT.Controls
         public async void SetFooterContentPresenter(object content)
         {
             await TemplateApplied.Task;
-            _footerContentPresenter.Content = content;
+            _page.BottomAppBar = content as CommandBar;
+            _previousAppBarClosedDisplayMode = _page.BottomAppBar.ClosedDisplayMode;
         }
+
         public async void SetFooterVisibility(object visibility)
         {
             await TemplateApplied.Task;
-            _footerContentPresenter.Visibility = (Visibility)visibility;
+#if WINDOWS_UWP
+            _page.BottomAppBar.ClosedDisplayMode = (AppBarClosedDisplayMode)visibility;
+#else
+            _page.BottomAppBar.Visibility = (Visibility)visibility;
+#endif
         }
 
         #region Content Property
@@ -116,20 +120,20 @@ namespace VLC_WinRT.Controls
         private static void FlyoutContentPropertyChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
         {
             var that = (SplitShell)dependencyObject;
-            that.SetRightPaneContentPresenter(dependencyPropertyChangedEventArgs.NewValue);
+            that.SetFlyoutContentPresenter(dependencyPropertyChangedEventArgs.NewValue);
         }
         #endregion
 
         #region FooterContent Property
 
-        public Visibility FooterVisibility
+        public AppBarClosedDisplayMode FooterVisibility
         {
-            get { return (Visibility)GetValue(FooterVisibilityProperty); }
+            get { return (AppBarClosedDisplayMode)GetValue(FooterVisibilityProperty); }
             set { SetValue(FooterVisibilityProperty, value); }
         }
 
         public static readonly DependencyProperty FooterVisibilityProperty = DependencyProperty.Register(
-            "FooterVisibility", typeof(Visibility), typeof(SplitShell), new PropertyMetadata(Visibility.Visible, FooterVisibilityPropertyChangedCallback));
+            nameof(FooterVisibility), typeof(AppBarClosedDisplayMode), typeof(SplitShell), new PropertyMetadata(AppBarClosedDisplayMode.Compact, FooterVisibilityPropertyChangedCallback));
 
         private static void FooterVisibilityPropertyChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
         {
@@ -144,7 +148,7 @@ namespace VLC_WinRT.Controls
         }
 
         public static readonly DependencyProperty FooterContentProperty = DependencyProperty.Register(
-            "FooterContent", typeof(DependencyObject), typeof(SplitShell),
+            nameof(FooterContent), typeof(DependencyObject), typeof(SplitShell),
             new PropertyMetadata(default(DependencyObject), FooterContentPropertyChangedCallback));
 
         private static void FooterContentPropertyChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
@@ -162,6 +166,7 @@ namespace VLC_WinRT.Controls
         protected override void OnApplyTemplate()
         {
             base.OnApplyTemplate();
+            _page = (Page)GetTemplateChild(PageName);
             _contentPresenter = (ContentPresenter)GetTemplateChild(ContentPresenterName);
             _flyoutContentPresenter = (Frame)GetTemplateChild(FlyoutContentPresenterName);
             _flyoutFadeIn = (Storyboard)GetTemplateChild(FlyoutFadeInName);
@@ -171,7 +176,6 @@ namespace VLC_WinRT.Controls
             _flyoutPlaneProjection = (PlaneProjection)GetTemplateChild(FlyoutPlaneProjectionName);
             _flyoutGridContainer = (Grid)GetTemplateChild(FlyoutGridContainerName);
             _flyoutBackgroundGrid = (Grid)GetTemplateChild(FlyoutBackgroundGridName);
-            _footerContentPresenter = (ContentPresenter)GetTemplateChild(FooterContentPresenterName);
 
             Responsive();
             Window.Current.SizeChanged += Current_SizeChanged;
@@ -193,7 +197,7 @@ namespace VLC_WinRT.Controls
 
         private void _flyoutFadeIn_Completed(object sender, object e)
         {
-            RightSidebarNavigated?.Invoke(null, new EventArgs());
+            FlyoutNavigated?.Invoke(null, new EventArgs());
         }
 
         private void _flyoutFadeOut_Completed(object sender, object e)
@@ -245,13 +249,13 @@ namespace VLC_WinRT.Controls
         {
             _flyoutFadeOut.Begin();
             IsFlyoutOpen = false;
-            RightSidebarClosed?.Invoke(null, new EventArgs());
+            FlyoutClosed?.Invoke(null, new EventArgs());
         }
 
         public void HideTopBar()
         {
             _topBarFadeOut.Begin();
-            _contentPresenter.Margin = new Thickness(0, 0, 0, - _footerContentPresenter.ActualHeight);
+            _contentPresenter.Margin = new Thickness(0, 0, 0, - _page.BottomAppBar.ActualHeight);
             IsTopBarOpen = false;
         }
 

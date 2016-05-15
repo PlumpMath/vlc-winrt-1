@@ -64,15 +64,7 @@ namespace VLC_WinRT.Services.RunTime
                 try
                 {
                     Instance = new Instance(param, App.RootPage.SwapChainPanel);
-                }
-                catch (Exception e)
-                {
-                    LogHelper.Log("VLC Service : Couldn't create VLC Instance\n" + StringsHelper.ExceptionToString(e));
-                    ToastHelper.Basic(Strings.FailStartVLCEngine);
-                }
-                finally
-                {
-                    Instance.setDialogHandlers(
+                    Instance?.setDialogHandlers(
                         async (title, text) =>
                         {
                             await DispatchHelper.InvokeAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () => await DialogHelper.DisplayDialog(title, text));
@@ -91,6 +83,11 @@ namespace VLC_WinRT.Services.RunTime
                         (dialog) => dialog.dismiss(),
                         (dialog, position, text) => { });
                 }
+                catch (Exception e)
+                {
+                    LogHelper.Log("VLC Service : Couldn't create VLC Instance\n" + StringsHelper.ExceptionToString(e));
+                    ToastHelper.Basic(Strings.FailStartVLCEngine);
+                }
                 PlayerInstanceReady.TrySetResult(Instance != null);
             });
         }
@@ -100,27 +97,36 @@ namespace VLC_WinRT.Services.RunTime
             MediaPlayer = null;
         }
 
-        public async Task SetMediaFile(IVLCMedia media)
+        public async Task SetMediaFile(IMediaItem media)
         {
-            var mrl_fromType = media.GetMrlAndFromType();
-            LogHelper.Log("SetMRL: " + mrl_fromType.Item2);
-            if (Instance == null)
+            Media vlcMedia = null;
+            if (media.VlcMedia != null)
             {
-                await Initialize();
+                vlcMedia = media.VlcMedia;
             }
-            await PlayerInstanceReady.Task;
-
-            if (!PlayerInstanceReady.Task.Result)
+            else
             {
-                LogHelper.Log($"Couldn't play media {media.Name} as VLC failed to init");
-                return;
+                var mrl_fromType = media.GetMrlAndFromType();
+                LogHelper.Log("SetMRL: " + mrl_fromType.Item2);
+                if (Instance == null)
+                {
+                    await Initialize();
+                }
+                await PlayerInstanceReady.Task;
+
+                if (!PlayerInstanceReady.Task.Result)
+                {
+                    LogHelper.Log($"Couldn't play media {media.Name} as VLC failed to init");
+                    return;
+                }
+
+                vlcMedia = new Media(Instance, mrl_fromType.Item2, mrl_fromType.Item1);
             }
 
-            var mediaVLC = new Media(Instance, mrl_fromType.Item2, mrl_fromType.Item1);
             // Hardware decoding
-            mediaVLC.addOption(!Locator.SettingsVM.HardwareAccelerationEnabled ? ":avcodec-hw=none" : ":avcodec-hw=d3d11va");
+            vlcMedia.addOption(!Locator.SettingsVM.HardwareAccelerationEnabled ? ":avcodec-hw=none" : ":avcodec-hw=d3d11va");
 
-            MediaPlayer = new MediaPlayer(mediaVLC);
+            MediaPlayer = new MediaPlayer(vlcMedia);
             LogHelper.Log("PLAYWITHVLC: MediaPlayer instance created");
             var em = MediaPlayer.eventManager();
             em.OnOpening += Em_OnOpening;
@@ -418,17 +424,25 @@ namespace VLC_WinRT.Services.RunTime
                 await Initialize();
             }
             await PlayerInstanceReady.Task;
-            discoverer = new MediaDiscoverer(Instance, "upnp");
-            var mediaList = discoverer.mediaList();
-            if (mediaList == null)
-                return false;
+            if (discoverer == null)
+            {
+                discoverer = new MediaDiscoverer(Instance, "upnp");
+                var mediaList = discoverer.mediaList();
+                if (mediaList == null)
+                    return false;
 
-            var eventManager = mediaList.eventManager();
-            eventManager.onItemAdded += MediaListItemAdded;
-            eventManager.onItemDeleted += MediaListItemDeleted;
+                var eventManager = mediaList.eventManager();
+                eventManager.onItemAdded += MediaListItemAdded;
+                eventManager.onItemDeleted += MediaListItemDeleted;
+            }
 
             discoverer.start();
             return true;
+        }
+
+        public void DisposeDiscoverer()
+        {
+            discoverer?.stop();
         }
 
         public Task<MediaList> DiscoverMediaList(Media media)

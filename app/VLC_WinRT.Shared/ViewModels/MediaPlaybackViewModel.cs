@@ -84,7 +84,7 @@ namespace VLC_WinRT.ViewModels
         
         public bool UseVlcLib { get; set; }
         
-        public IVLCMedia CurrentMedia
+        public IMediaItem CurrentMedia
         {
             get
             {
@@ -414,6 +414,15 @@ namespace VLC_WinRT.ViewModels
             }
         }
 
+        public async Task PlayMedia(IMediaItem mediaItem)
+        {
+            if (mediaItem is VideoItem || mediaItem is StreamMedia)
+            {
+                Locator.NavigationService.Go(VLCPage.VideoPlayerPage);
+                await Locator.MediaPlaybackViewModel.SetMedia(mediaItem);
+            }
+        }
+
         /// <summary>
         /// Navigates to the Video Player with the request MRL as parameter
         /// </summary>
@@ -441,7 +450,6 @@ namespace VLC_WinRT.ViewModels
         /// <param name="token">Token is for files that are NOT in the sandbox, such as files taken from the filepicker from a sd card but not in the Video/Music folder.</param>
         public async Task PlayAudioFile(StorageFile file, string token = null)
         {
-            Locator.NavigationService.Go(VLCPage.MusicPlayerPage);
             var trackItem = await Locator.MediaLibrary.GetTrackItemFromFile(file, token);
             await PlaylistHelper.PlayTrackFromFilePicker(trackItem);
         }
@@ -453,7 +461,6 @@ namespace VLC_WinRT.ViewModels
         /// <param name="token">Token is for files that are NOT in the sandbox, such as files taken from the filepicker from a sd card but not in the Video/Music folder.</param>
         public async Task PlayVideoFile(StorageFile file, string token = null)
         {
-            Locator.NavigationService.Go(VLCPage.VideoPlayerPage);
             VideoItem videoVm = new VideoItem();
             await videoVm.Initialize(file);
             if (token != null)
@@ -554,7 +561,7 @@ namespace VLC_WinRT.ViewModels
             mediaService.SetNullMediaPlayer();
         }
 
-        public Task SetMedia(IVLCMedia media, bool forceVlcLib = false, bool autoPlay = true)
+        public Task SetMedia(IMediaItem media, bool forceVlcLib = false, bool autoPlay = true)
         {
             return Task.Run(async () =>
             {
@@ -582,9 +589,7 @@ namespace VLC_WinRT.ViewModels
                     await Locator.VideoPlayerVm.TryUseSubtitleFromFolder();
 
                     if (video.TimeWatched != TimeSpan.FromSeconds(0))
-                        await
-                            DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal,
-                                () => Locator.MediaPlaybackViewModel.Time = (Int64)video.TimeWatched.TotalMilliseconds);
+                        await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => Locator.MediaPlaybackViewModel.Time = (Int64)video.TimeWatched.TotalMilliseconds);
 #if WINDOWS_PHONE_APP
                     try
                     {
@@ -664,7 +669,7 @@ namespace VLC_WinRT.ViewModels
             });
         }
 
-        public async Task InitializePlayback(IVLCMedia media, bool autoPlay)
+        public async Task InitializePlayback(IMediaItem media, bool autoPlay)
         {
             // First set the player engine
             // For videos AND music, we have to try first with Microsoft own player
@@ -965,9 +970,9 @@ namespace VLC_WinRT.ViewModels
         {
             _mediaService.Stop();
         }
-#endregion
+        #endregion
 
-#region Events
+        #region Events
         private async void PlayerStateChanged(object sender, MediaState e)
         {
             try
@@ -1108,9 +1113,9 @@ namespace VLC_WinRT.ViewModels
                 OnPropertyChanged(nameof(CurrentChapter));
             });
         }
-#endregion
+        #endregion
 
-#region MediaTransportControls
+        #region MediaTransportControls
 
         public void SetMediaTransportControls(SystemMediaTransportControls systemMediaTransportControls)
         {
@@ -1245,7 +1250,7 @@ namespace VLC_WinRT.ViewModels
             {
             }
         }
-#endregion
+        #endregion
 
         public void Pause()
         {
