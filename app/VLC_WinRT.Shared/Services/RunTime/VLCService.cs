@@ -178,20 +178,30 @@ namespace VLC_WinRT.Services.RunTime
             return StorageApplicationPermissions.FutureAccessList.Add(file);
         }
 
-        public Media GetMediaFromPath(string filePath)
+        public async Task<Media> GetMediaFromPath(string filePath)
         {
-            if (Instance == null) return null;
+            if (Instance == null)
+            {
+                await Initialize();
+            }
+            await PlayerInstanceReady.Task;
             if (string.IsNullOrEmpty(filePath))
                 return null;
             return new Media(Instance, filePath, FromType.FromPath);
         }
 
-        public string GetAlbumUrl(Media media)
+        public async Task<string> GetArtworkUrl(Media media)
         {
-            if (media == null) return null;
-            if (media.parseStatus() == libVLCX.ParseStatus.Init)
+            if (Instance == null)
+            {
+                await Initialize();
+            }
+            await PlayerInstanceReady.Task;
+            if (media == null)
+                return null;
+            if (media.parseStatus() == ParseStatus.Init)
                 media.parse();
-            if (media.parseStatus() == libVLCX.ParseStatus.Failed)
+            if (media.parseStatus() == ParseStatus.Failed)
                 return null;
             var url = media.meta(MediaMeta.ArtworkURL);
             if (!string.IsNullOrEmpty(url))
@@ -199,12 +209,18 @@ namespace VLC_WinRT.Services.RunTime
             return null;
         }
 
-        public MediaProperties GetVideoProperties(Media media)
+        public async Task<MediaProperties> GetVideoProperties(Media media)
         {
-            if (media == null) return null;
-            if (media.parseStatus() == libVLCX.ParseStatus.Init)
+            if (Instance == null)
+            {
+                await Initialize();
+            }
+            await PlayerInstanceReady.Task;
+            if (media == null)
+                return null;
+            if (media.parseStatus() == ParseStatus.Init)
                 media.parse();
-            if (media.parseStatus() == libVLCX.ParseStatus.Failed)
+            if (media.parseStatus() == ParseStatus.Failed)
                 return null;
             var mP = new MediaProperties();
             mP.Title = media.meta(MediaMeta.Title);
@@ -236,15 +252,28 @@ namespace VLC_WinRT.Services.RunTime
             {
                 mP.Episodes = episodesTotal;
             }
+
+            var videoTrack = media.tracks().FirstOrDefault(x => x.type() == TrackType.Video);
+            if (videoTrack != null)
+            {
+                mP.Width = videoTrack.width();
+                mP.Height = videoTrack.height();
+            }
+
             return mP;
         }
 
-        public MediaProperties GetMusicProperties(Media media)
+        public async Task<MediaProperties> GetMusicProperties(Media media)
         {
+            if (Instance == null)
+            {
+                await Initialize();
+            }
+            await PlayerInstanceReady.Task;
             if (media == null) return null;
-            if (media.parseStatus() == libVLCX.ParseStatus.Init)
+            if (media.parseStatus() == ParseStatus.Init)
                 media.parse();
-            if (media.parseStatus() == libVLCX.ParseStatus.Failed)
+            if (media.parseStatus() == ParseStatus.Failed)
                 return null;
             var mP = new MediaProperties();
             mP.AlbumArtist = media.meta(MediaMeta.AlbumArtist);
@@ -284,28 +313,51 @@ namespace VLC_WinRT.Services.RunTime
             return mP;
         }
 
-        public TimeSpan GetDuration(Media media)
+        public async Task<TimeSpan> GetDuration(Media media)
         {
-            if (media == null) return TimeSpan.Zero;
+            if (Instance == null)
+            {
+                await Initialize();
+            }
+            await PlayerInstanceReady.Task;
+
+            if (media == null)
+                return TimeSpan.Zero;
             media.parse();
+
             if (media.parseStatus() != ParseStatus.Done)
                 return TimeSpan.Zero;
+
             var durationLong = media.duration();
             return TimeSpan.FromMilliseconds(durationLong);
         }
         #endregion
         #region playback actions
+        public void SetSubtitleFile(string mrl)
+        {
+            MediaPlayer?.setSubtitleFile(mrl);
+        }
+
+        public void SetSubtitleTrack(int i)
+        {
+            MediaPlayer?.setSpu(i);
+        }
+
+        public void SetAudioTrack(int i)
+        {
+            MediaPlayer?.setAudioTrack(i);
+        }
+
         public void SetAudioDelay(long delay)
         {
-            MediaPlayer.setAudioDelay(delay);
+            MediaPlayer?.setAudioDelay(delay);
         }
 
         public void SetSpuDelay(long delay)
         {
-            MediaPlayer.setSpuDelay(delay);
+            MediaPlayer?.setSpuDelay(delay);
         }
-
-
+        
         public void Play()
         {
             MediaPlayer?.play();

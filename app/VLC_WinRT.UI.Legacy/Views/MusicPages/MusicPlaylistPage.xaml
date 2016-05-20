@@ -10,13 +10,12 @@
       RequestedTheme="Dark">
     <Grid Background="{ThemeResource ApplicationOverlayTranslucentThemeBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="{StaticResource FrameMarginGridLengthDouble}" />
+            <RowDefinition Height="{StaticResource FrameMarginGridLength}" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="{StaticResource FrameMarginGridLength}" />
             <RowDefinition />
         </Grid.RowDefinitions>
-        <Grid Grid.Row="1"
-              RequestedTheme="Dark">
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition />

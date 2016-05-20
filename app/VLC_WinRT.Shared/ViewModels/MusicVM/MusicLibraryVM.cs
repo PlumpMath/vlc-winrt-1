@@ -29,6 +29,7 @@ using VLC_WinRT.Utils;
 using VLC_WinRT.Commands.MusicPlayer;
 using Windows.UI.Xaml;
 using VLC_WinRT.Model.Library;
+using VLC_WinRT.Commands.MediaLibrary;
 
 namespace VLC_WinRT.ViewModels.MusicVM
 {
@@ -127,7 +128,7 @@ namespace VLC_WinRT.ViewModels.MusicVM
                 var musicView = ApplicationSettingsHelper.ReadSettingsValue(nameof(MusicView), false);
                 if (musicView == null)
                 {
-                    _musicView = MusicView.Artists;
+                    _musicView = MusicView.Albums;
                 }
                 else
                 {
@@ -200,11 +201,10 @@ namespace VLC_WinRT.ViewModels.MusicVM
         public bool IsMusicLibraryEmpty => Locator.MediaLibrary.Artists?.Count == 0
                                         && Locator.MediaLibrary.Albums?.Count == 0
                                         && Locator.MediaLibrary.Tracks?.Count == 0
-                                        && LoadingStateArtists != LoadingState.Loaded
-                                        && LoadingStateAlbums != LoadingState.Loaded
-                                        && LoadingStateTracks != LoadingState.Loaded; 
-
-        public StartMusicIndexingCommand StartMusicIndexingCommand { get; } = new StartMusicIndexingCommand();
+                                        && LoadingStateArtists == LoadingState.Loaded
+                                        && LoadingStateAlbums == LoadingState.Loaded
+                                        && LoadingStateTracks == LoadingState.Loaded;
+        public IndexMediaLibraryCommand IndexMediaLibraryCommand => new IndexMediaLibraryCommand();
 
         public AddToPlaylistCommand AddToPlaylistCommand { get; } = new AddToPlaylistCommand();
 

@@ -81,6 +81,11 @@ namespace VLC_WinRT
             {
                 await RedirectFromSecondaryTile(args.Arguments);
             }
+
+            if (string.IsNullOrEmpty(ApiKeyMovieDb))
+            {
+                throw new ArgumentNullException(nameof(ApiKeyMovieDb), "VLC needs a valid MovieDB Api Key");
+            }
         }
 
         private async Task RedirectFromSecondaryTile(string args)

@@ -61,7 +61,6 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
         public void UpdatePlayerVisibility()
         {
             NowPlayingArtistGrid.Visibility =
-                SliderHorizontal.Visibility =
                 PlayPreviousButton.Visibility =
                 PlayNextButton.Visibility =
                 ShuffleButton.Visibility =
@@ -69,9 +68,7 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
                 MiniWindowButton.Visibility =
                 MiniPlayerVisibility;
 
-            this.ClosedDisplayMode =
-                MiniPlayerVisibility == Visibility.Visible ?
-                    AppBarClosedDisplayMode.Compact : AppBarClosedDisplayMode.Minimal;
+            this.ClosedDisplayMode = MiniPlayerVisibility == Visibility.Visible ? AppBarClosedDisplayMode.Compact : AppBarClosedDisplayMode.Minimal;
         }
 
         #endregion
@@ -85,6 +82,15 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
 
         void Responsive()
         {
+            if (this.ActualWidth < 500)
+            {
+                TrackNameTextBlock.Visibility = ArtistNameTextBlock.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                TrackNameTextBlock.Visibility = ArtistNameTextBlock.Visibility = Visibility.Visible;
+            }
+
             if (this.ActualWidth < 700)
             {
                 bool addedSeparator = false;
@@ -175,6 +181,11 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
                     }
                 }
             }
+        }
+
+        private void PlayButton_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            Locator.MediaPlaybackViewModel.Stop();
         }
     }
 }

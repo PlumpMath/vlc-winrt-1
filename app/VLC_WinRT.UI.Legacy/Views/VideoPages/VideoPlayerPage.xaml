@@ -148,7 +148,8 @@
                 <TranslateTransform />
             </Border.RenderTransform>
             <Grid>
-                <userControls:SliderControl x:Name="Slider" />
+                <userControls:SliderControl x:Name="Slider"
+                                            VerticalAlignment="Top"/>
                 <Grid Margin="0,40,0,-10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition />
@@ -167,7 +168,7 @@
                                 <FontIcon x:Name="LockToggleIcon"
                                           Glyph="{StaticResource UnlockedSymbol}"
                                           FontFamily="{StaticResource VLCFont}"
-                                          FontSize="24" />
+                                          FontSize="20" />
                             </AppBarToggleButton.Icon>
                         </AppBarToggleButton>
                         <AppBarButton Name="PiPButton"
@@ -279,8 +280,7 @@
                                     Value="{Binding Volume, Mode=TwoWay}"
                                     Maximum="100"
                                     Style="{StaticResource VLCSlider}"
-                                    MinWidth="110"
-                                    Margin="0,12,0,0" />
+                                    MinWidth="110" />
                         </Grid>
                     </StackPanel>
                 </Grid>

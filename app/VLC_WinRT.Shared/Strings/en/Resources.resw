@@ -244,7 +244,7 @@
     <value>feedback sent! thank you</value>
   </data>
   <data name="FileExplorer" xml:space="preserve">
-    <value>files</value>
+    <value>browse</value>
   </data>
   <data name="GoldPartners" xml:space="preserve">
     <value>gold partners</value>
@@ -291,8 +291,8 @@
   <data name="KeyboardShortcuts" xml:space="preserve">
     <value>keyboard shortcuts</value>
   </data>
-  <data name="Library" xml:space="preserve">
-    <value>library</value>
+  <data name="Local" xml:space="preserve">
+    <value>local</value>
   </data>
   <data name="License" xml:space="preserve">
     <value>license</value>
@@ -373,7 +373,7 @@
     <value>notifications</value>
   </data>
   <data name="NotificationWhenSongStarts" xml:space="preserve">
-    <value>notifications= when the song starts</value>
+    <value>when the song starts</value>
   </data>
   <data name="NoVideosFound" xml:space="preserve">
     <value>we did not find videos</value>

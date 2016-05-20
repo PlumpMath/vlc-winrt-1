@@ -20,27 +20,12 @@ namespace VLC_WinRT.Utils
     {
         public static Task InvokeAsync(CoreDispatcherPriority priority, Action action)
         {
-            //for some reason this crashes the designer (so dont do it in design mode)
-            if (!DesignMode.DesignModeEnabled)
+            if (CoreApplication.MainView.Dispatcher.HasThreadAccess)
             {
-                if (CoreApplication.MainView.CoreWindow == null || CoreApplication.MainView.CoreWindow.Dispatcher.HasThreadAccess)
-                {
-                    action();
-                    return Task.FromResult(true);
-                }
-                else
-                {
-                    return CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => action()).AsTask();
-                }
+                action();
+                return Task.FromResult(true);
             }
-            return Task.FromResult(true);
-        }
-
-        // This should be avoided as much as possible as it will block a thread.
-        // Prefer the asynchronous version whenever possible
-        public static void Invoke(Action action)
-        {
-            InvokeAsync(CoreDispatcherPriority.Normal, action).Wait();
+            return CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => action()).AsTask();
         }
     }
 }

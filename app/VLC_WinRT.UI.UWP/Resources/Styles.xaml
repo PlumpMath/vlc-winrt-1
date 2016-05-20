@@ -1688,6 +1688,11 @@
                                             <DiscreteObjectKeyFrame KeyTime="0"
                                                                     Value="{StaticResource SemiLightMainColor}" />
                                         </ObjectAnimationUsingKeyFrames>
+                                        <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Content"
+                                                                       Storyboard.TargetProperty="Foreground">
+                                            <DiscreteObjectKeyFrame KeyTime="0"
+                                                                    Value="White" />
+                                        </ObjectAnimationUsingKeyFrames>
                                     </Storyboard>
                                 </VisualState>
                                 <VisualState x:Name="CheckedPointerOver">
@@ -1765,6 +1770,7 @@
                                                   Foreground="{TemplateBinding Foreground}"
                                                   HorizontalAlignment="Stretch"
                                                   VerticalAlignment="Stretch"
+                                                  Margin="0,2,0,0"
                                                   AutomationProperties.AccessibilityView="Raw" />
                             </Grid>
                             <TextBlock x:Name="TextLabel"
@@ -2034,11 +2040,7 @@
                         </Grid>
                         <Grid Grid.Column="1"
                               VerticalAlignment="Center"
-                              Margin="0,-4,5,0">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
+                              Margin="2,-3,5,0">
                             <TextBlock x:Name="TextLabel"
                                        Foreground="{TemplateBinding Foreground}"
                                        FontSize="{TemplateBinding FontSize}"

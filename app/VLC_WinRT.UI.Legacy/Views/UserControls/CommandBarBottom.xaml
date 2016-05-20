@@ -41,14 +41,16 @@
                            Source="{Binding CurrentAlbum.AlbumImage}"
                            Stretch="UniformToFill"
                            Tapped="RootMiniPlayer_Tapped" />
-                    <TextBlock Grid.Column="2"
+                    <TextBlock x:Name="TrackNameTextBlock"
+                               Grid.Column="2"
                                Text="{Binding CurrentTrack.Name}"
                                TextWrapping="NoWrap"
                                TextTrimming="CharacterEllipsis"
                                FontWeight="SemiBold"
                                FontSize="15"
                                VerticalAlignment="Bottom" />
-                    <TextBlock Grid.Column="2"
+                    <TextBlock x:Name="ArtistNameTextBlock"
+                               Grid.Column="2"
                                Grid.Row="1"
                                Text="{Binding CurrentTrack.ArtistName}"
                                TextWrapping="NoWrap"
@@ -57,9 +59,6 @@
                                FontSize="13" />
                 </Grid>
             </Button>
-            <userControl:SliderControlHorizontal x:Name="SliderHorizontal"
-                                                 Grid.Row="1"
-                                                 Margin="{StaticResource FrameMarginVertical}" />
         </Grid>
     </CommandBar.Content>
     <CommandBar.PrimaryCommands>
@@ -77,7 +76,8 @@
                       DataContext="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel}"
                       Command="{Binding PlayOrPauseCommand}"
                       IsCompact="True"
-                      Visibility="{Binding IsPlaying, Converter={StaticResource NegatedBooleanToVisibilityConverter}}">
+                      Visibility="{Binding IsPlaying, Converter={StaticResource NegatedBooleanToVisibilityConverter}}"
+                      RightTapped="PlayButton_RightTapped">
             <AppBarButton.Icon>
                 <FontIcon Glyph="{StaticResource PlaySymbol}"
                           FontFamily="{StaticResource VLCFont}" />
@@ -87,7 +87,8 @@
                       DataContext="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel}"
                       Command="{Binding PlayOrPauseCommand}"
                       IsCompact="True"
-                      Visibility="{Binding IsPlaying, Converter={StaticResource BooleanToVisibilityConverter}}">
+                      Visibility="{Binding IsPlaying, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      RightTapped="PlayButton_RightTapped">
             <AppBarButton.Icon>
                 <FontIcon Glyph="{StaticResource PauseSymbol}"
                           FontFamily="{StaticResource VLCFont}" />

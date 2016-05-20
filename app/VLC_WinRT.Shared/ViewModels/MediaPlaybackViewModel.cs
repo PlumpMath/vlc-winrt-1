@@ -461,12 +461,11 @@ namespace VLC_WinRT.ViewModels
         /// <param name="token">Token is for files that are NOT in the sandbox, such as files taken from the filepicker from a sd card but not in the Video/Music folder.</param>
         public async Task PlayVideoFile(StorageFile file, string token = null)
         {
-            VideoItem videoVm = new VideoItem();
-            await videoVm.Initialize(file);
+            var video = await MediaLibraryHelper.GetVideoItem(file);
             if (token != null)
-                videoVm.Token = token;
-            Locator.VideoPlayerVm.CurrentVideo = videoVm;
-            await PlaylistHelper.Play(videoVm);
+                video.Token = token;
+            Locator.VideoPlayerVm.CurrentVideo = video;
+            await PlaylistHelper.Play(video);
         }
         
         private async void UpdateTime(Int64 time)
@@ -478,11 +477,11 @@ namespace VLC_WinRT.ViewModels
         {
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
             {
-                OnPropertyChanged("Time");
+                OnPropertyChanged(nameof(Time));
                 // Assume position also changes when time does.
                 // We could/should also watch OnPositionChanged event, but let's save us
                 // the cost of another dispatched call.
-                OnPropertyChanged("Position");
+                OnPropertyChanged(nameof(Position));
             });
         }
 
@@ -573,7 +572,6 @@ namespace VLC_WinRT.ViewModels
                 if (media is VideoItem)
                 {
                     // First things first: we need to pause the slideshow here before any action is done by VLC
-                    Locator.Slideshow.IsPaused = true;
                     await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
                     {
                         PlayingType = PlayingType.Video;
@@ -601,7 +599,7 @@ namespace VLC_WinRT.ViewModels
                     {
                     }
 #else
-                    await SetMediaTransportControlsInfo(string.IsNullOrEmpty(video.Name) ? "Video" : video.Name);
+                    await SetMediaTransportControlsInfo(string.IsNullOrEmpty(video.Name) ? Strings.Video : video.Name);
 #endif
                     UpdateTileHelper.UpdateMediumTileWithVideoInfo();
                 }
@@ -762,7 +760,7 @@ namespace VLC_WinRT.ViewModels
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
             {
                 IsBuffered = f == 100;
-                OnPropertyChanged("BufferingProgress");
+                OnPropertyChanged(nameof(BufferingProgress));
             });
         }
 
@@ -786,13 +784,6 @@ namespace VLC_WinRT.ViewModels
                         await lostStreamDialog.ShowAsyncQueue();
 #endif
                     }
-
-#if WINDOWS_UWP
-                    await DialogHelper.DisplayDialog(Strings.MediaCantBeRead, Strings.Sorry);
-#else
-                    var md = new MessageDialog(Strings.MediaCantBeRead, Strings.Sorry);
-                    await md.ShowAsyncQueue();
-#endif
                     // ensure we call Stop so we unregister all events
                     Stop();
                 });
@@ -802,6 +793,25 @@ namespace VLC_WinRT.ViewModels
 
         async void OnEndReached()
         {
+            switch (PlayingType)
+            {
+                case PlayingType.Music:
+                    break;
+                case PlayingType.Video:
+                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
+                    {
+                        if (Locator.VideoPlayerVm.CurrentVideo != null)
+                            Locator.VideoPlayerVm.CurrentVideo.TimeWatchedSeconds = 0;
+                    });
+                    if (Locator.VideoPlayerVm.CurrentVideo != null)
+                        await Locator.MediaLibrary.UpdateVideo(Locator.VideoPlayerVm.CurrentVideo).ConfigureAwait(false);
+                    break;
+                case PlayingType.NotPlaying:
+                    break;
+                default:
+                    break;
+            }
+
             bool canGoNext = TrackCollection.Playlist.Count > 0 && TrackCollection.CanGoNext;
             if (!canGoNext)
             {
@@ -824,26 +834,10 @@ namespace VLC_WinRT.ViewModels
                     }
                 });
             }
-            switch (PlayingType)
+            else
             {
-                case PlayingType.Music:
-                    break;
-                case PlayingType.Video:
-                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
-                    {
-                        if (Locator.VideoPlayerVm.CurrentVideo != null)
-                            Locator.VideoPlayerVm.CurrentVideo.TimeWatchedSeconds = 0;
-                    });
-                    if (Locator.VideoPlayerVm.CurrentVideo != null)
-                        await Locator.MediaLibrary.UpdateVideo(Locator.VideoPlayerVm.CurrentVideo).ConfigureAwait(false);
-                    break;
-                case PlayingType.NotPlaying:
-                    break;
-                default:
-                    break;
-            }
-            if (canGoNext)
                 await PlayNext();
+            }
         }
 
         public async Task StartAgain()
@@ -904,7 +898,7 @@ namespace VLC_WinRT.ViewModels
             {
                 case PlayerEngine.VLC:
                     var vlcService = (VLCService)_mediaService;
-                    vlcService.MediaPlayer?.setSpu(i);
+                    vlcService.SetSubtitleTrack(i);
                     break;
                 case PlayerEngine.MediaFoundation:
                     break;
@@ -921,7 +915,7 @@ namespace VLC_WinRT.ViewModels
             {
                 case PlayerEngine.VLC:
                     var vlcService = (VLCService)_mediaService;
-                    vlcService.MediaPlayer?.setAudioTrack(i);
+                    vlcService.SetAudioTrack(i);
                     break;
                 case PlayerEngine.MediaFoundation:
                     break;
@@ -938,7 +932,7 @@ namespace VLC_WinRT.ViewModels
             {
                 case PlayerEngine.VLC:
                     var vlcService = (VLCService)_mediaService;
-                    vlcService.MediaPlayer?.setSubtitleFile(mrl);
+                    vlcService.SetSubtitleFile(mrl);
                     break;
                 case PlayerEngine.MediaFoundation:
                     break;

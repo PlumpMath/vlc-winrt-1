@@ -177,7 +177,6 @@ namespace VLC_WinRT.Services.RunTime
                 case VLCPage.MiniPlayerView:
                     AppViewHelper.ResizeWindow(true);
                     GoBack_Default();
-                    Locator.Slideshow.IsPaused = false;
                     break;
                 // Settings pages
                 case VLCPage.SettingsPage:
@@ -201,7 +200,7 @@ namespace VLC_WinRT.Services.RunTime
                     GoBack_HideFlyout();
                     break;
                 case VLCPage.TrackEditorPage:
-                    GoBack_Default();
+                    GoBack_HideFlyout();
                     break;
                 case VLCPage.FeedbackPage:
                     GoBack_HideFlyout();
@@ -249,6 +248,11 @@ namespace VLC_WinRT.Services.RunTime
             if (frame?.Content == null) return;
             frame.Navigate(frame.Content.GetType());
             frame.GoBack();
+
+            if (currentFlyout != null && currentFlyout != VLCPage.None)
+            {
+                Go(currentFlyout);
+            }
         }
 
         public void Go(VLCPage desiredPage)
@@ -354,7 +358,7 @@ namespace VLC_WinRT.Services.RunTime
                     App.SplitShell.FlyoutContent = typeof(VideoPlayerOptionsPanel);
                     break;
                 case VLCPage.TrackEditorPage:
-                    App.ApplicationFrame.Navigate(typeof(TrackEditorPage));
+                    App.SplitShell.FlyoutContent = typeof(TrackEditorPage);
                     break;
                 case VLCPage.FeedbackPage:
                     App.SplitShell.FlyoutContent = typeof(FeedbackPage);
@@ -385,7 +389,8 @@ namespace VLC_WinRT.Services.RunTime
                    page == VLCPage.SettingsPage ||
                    page == VLCPage.VideoPlayerOptionsPanel ||
                    page == VLCPage.FeedbackPage ||
-                   page == VLCPage.TvShowView;
+                   page == VLCPage.TvShowView ||
+                   page == VLCPage.TrackEditorPage;
         }
 
         VLCPage PageTypeToVLCPage(Type page)

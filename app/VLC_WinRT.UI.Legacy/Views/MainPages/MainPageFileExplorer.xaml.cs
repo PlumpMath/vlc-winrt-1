@@ -14,12 +14,12 @@ namespace VLC_WinRT.Views.MainPages
             this.Loaded += MainPageFileExplorer_Loaded;
         }
         
-        private void MainPageFileExplorer_Loaded(object sender, RoutedEventArgs e)
+        private async void MainPageFileExplorer_Loaded(object sender, RoutedEventArgs e)
         {
-            Locator.FileExplorerVM.OnNavigatedTo();
             Responsive();
             this.SizeChanged += OnSizeChanged;
             this.Unloaded += OnUnloaded;
+            await Locator.FileExplorerVM.OnNavigatedTo();
         }
 
         private void OnSizeChanged(object sender, SizeChangedEventArgs sizeChangedEventArgs)
@@ -41,11 +41,10 @@ namespace VLC_WinRT.Views.MainPages
                 {
                     OpenFileButton.IsCompact = GoBackButton.IsCompact = true;
                 }
-                PlayFolderButton.IsCompact = true;
             }
             else
             {
-                OpenFileButton.IsCompact = GoBackButton.IsCompact = PlayFolderButton.IsCompact = false;
+                OpenFileButton.IsCompact = GoBackButton.IsCompact = false;
             }
         }
     }

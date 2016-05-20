@@ -175,7 +175,7 @@
           <target state="needs-review-translation" state-qualifier="mt-suggestion">送られたフィードバック!ありがとう</target>
         </trans-unit>
         <trans-unit id="FileExplorer" translate="yes" xml:space="preserve">
-          <source>files</source>
+          <source>browse</source>
           <target state="translated">ファイル</target>
         </trans-unit>
         <trans-unit id="GoldPartners" translate="yes" xml:space="preserve">
@@ -347,7 +347,7 @@
           <target state="needs-review-translation" state-qualifier="tm-suggestion">通知</target>
         </trans-unit>
         <trans-unit id="NotificationWhenSongStarts" translate="yes" xml:space="preserve">
-          <source>notifications= when the song starts</source>
+          <source>when the song starts</source>
           <target state="needs-review-translation" state-qualifier="mt-suggestion">通知 = 歌が始まるときに</target>
         </trans-unit>
         <trans-unit id="NoVideosFound" translate="yes" xml:space="preserve">

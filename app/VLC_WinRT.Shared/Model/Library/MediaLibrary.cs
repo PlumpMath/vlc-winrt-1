@@ -35,6 +35,17 @@ namespace VLC_WinRT.Model.Library
         public bool AlreadyIndexedOnce => _alreadyIndexedOnce;
 
         ThumbnailService ThumbsService => App.Container.Resolve<ThumbnailService>();
+        private LoadingState _mediaLibraryIndexingState = LoadingState.NotLoaded;
+        public LoadingState MediaLibraryIndexingState
+        {
+            get { return _mediaLibraryIndexingState; }
+            private set
+            {
+                _mediaLibraryIndexingState = value;
+                OnIndexing?.Invoke(value);
+            }
+        }
+        public event Action<LoadingState> OnIndexing;
         #endregion
 
         #region databases
@@ -129,9 +140,10 @@ namespace VLC_WinRT.Model.Library
             try
             {
                 await GenerateThumbnail(videoVm);
-                await Locator.VideoMetaService.GetMoviePicture(videoVm).ConfigureAwait(false);
+                if (videoVm.Type == ".mkv")
+                    await Locator.VideoMetaService.GetMoviePicture(videoVm).ConfigureAwait(false);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 LogHelper.Log(StringsHelper.ExceptionToString(e));
                 MediaItemDiscovererSemaphoreSlim.Release();
@@ -183,6 +195,7 @@ namespace VLC_WinRT.Model.Library
 
         public async Task Initialize()
         {
+            MediaLibraryIndexingState = LoadingState.Loading;
             Artists = new SmartCollection<ArtistItem>();
             Albums = new SmartCollection<AlbumItem>();
             Tracks = new SmartCollection<TrackItem>();
@@ -205,6 +218,7 @@ namespace VLC_WinRT.Model.Library
                 // Else, perform a Routine Indexing (without dropping tables)
                 await PerformMediaLibraryIndexing();
             }
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () => MediaLibraryIndexingState = LoadingState.Loaded);
         }
 
         async Task StartIndexing()
@@ -285,10 +299,11 @@ namespace VLC_WinRT.Model.Library
             {
                 if (VLCFileExtensions.AudioExtensions.Contains(item.FileType.ToLower()))
                 {
-                    if (await trackDatabase.DoesTrackExist(item.Path)) return;
+                    if (await trackDatabase.DoesTrackExist(item.Path))
+                        return;
 
-                    var media = Locator.VLCService.GetMediaFromPath(item.Path);
-                    var mP = Locator.VLCService.GetMusicProperties(media);
+                    var media = await Locator.VLCService.GetMediaFromPath(item.Path);
+                    var mP = await Locator.VLCService.GetMusicProperties(media);
                     if (mP == null || (string.IsNullOrEmpty(mP.Artist) && string.IsNullOrEmpty(mP.Album) && (string.IsNullOrEmpty(mP.Title) || mP.Title == item.Name)))
                     {
                         var props = await item.Properties.GetMusicPropertiesAsync();
@@ -321,7 +336,7 @@ namespace VLC_WinRT.Model.Library
                         AlbumItem album = await albumDatabase.LoadAlbumViaName(artist.Id, albumName);
                         if (album == null)
                         {
-                            var albumUrl = Locator.VLCService.GetAlbumUrl(media);
+                            var albumUrl = await Locator.VLCService.GetArtworkUrl(media);
                             string albumSimplifiedUrl = null;
                             if (!string.IsNullOrEmpty(albumUrl) && albumUrl.StartsWith("file://"))
                             {
@@ -374,73 +389,24 @@ namespace VLC_WinRT.Model.Library
                 }
                 else if (VLCFileExtensions.VideoExtensions.Contains(item.FileType.ToLower()))
                 {
-                    // Check if we know the file:
-                    //FIXME: We need to check if the files in DB still exist on disk
-                    var mediaVM = await videoDatabase.GetFromPath(item.Path).ConfigureAwait(false);
-                    if (mediaVM != null)
+                    if (await videoDatabase.DoesMediaExist(item.Path))
+                        return;
+
+                    var video = await MediaLibraryHelper.GetVideoItem(item);
+                    
+                    await videoDatabase.Insert(video);
+
+                    if (video.IsTvShow)
                     {
-                        if (mediaVM.IsTvShow)
-                        {
-                            await AddTvShow(mediaVM);
-                        }
+                        await AddTvShow(video);
+                    }
+                    else if (video.IsCameraRoll)
+                    {
+                        CameraRoll.Add(video);
                     }
                     else
                     {
-                        MediaProperties videoProperties = null;
-                        if (!isCameraRoll)
-                        {
-                            videoProperties = TitleDecrapifier.tvShowEpisodeInfoFromString(item.DisplayName);
-                            if (videoProperties == null)
-                            {
-                                var mediaCam = Locator.VLCService.GetMediaFromPath(item.Path);
-                                videoProperties = Locator.VLCService.GetVideoProperties(mediaCam);
-                            }
-                        }
-
-                        bool isTvShow = !string.IsNullOrEmpty(videoProperties?.ShowTitle) && videoProperties?.Season >= 0 && videoProperties?.Episode >= 0;
-                        // Analyse to see if it's a tv show
-                        // if the file is from a tv show, we push it to this tvshow item
-                        mediaVM = !isTvShow ? new VideoItem() : new VideoItem(videoProperties.ShowTitle, videoProperties.Season, videoProperties.Episode);
-                        await mediaVM.Initialize(item);
-                        mediaVM.IsCameraRoll = isCameraRoll;
-                        if (string.IsNullOrEmpty(mediaVM.Name))
-                            return;
-                        VideoItem searchVideo = ViewedVideos.FirstOrDefault(x => x.Name == mediaVM.Name);
-                        if (searchVideo != null)
-                        {
-                            mediaVM.TimeWatchedSeconds = searchVideo.TimeWatched.Seconds;
-                        }
-
-                        if (isTvShow)
-                        {
-                            // TODO : Shouldn't be necessary to call await if show.Episodes wasn't in Thread UI
-                            await AddTvShow(mediaVM);
-                        }
-                        await videoDatabase.Insert(mediaVM);
-                    }
-
-                    if (mediaVM.IsCameraRoll)
-                    {
-                        // TODO: Find a more efficient way to know if it's already in the list or not
-                        if (CameraRoll.FirstOrDefault(x => x.Id == mediaVM.Id) == null)
-                        {
-                            CameraRoll.Add(mediaVM);
-                        }
-                    }
-                    else if (!mediaVM.IsTvShow)
-                    {
-                        if (Videos.FirstOrDefault(x => x.Id == mediaVM.Id) == null)
-                        {
-                            Videos.Add(mediaVM);
-                        }
-                    }
-                    if (ViewedVideos.Count < 6 &&
-                        ViewedVideos.FirstOrDefault(x => x.Path == mediaVM.Path && x.TimeWatched == TimeSpan.Zero) == null)
-                    {
-                        if (ViewedVideos.FirstOrDefault(x => x.Id == mediaVM.Id) == null)
-                        {
-                            ViewedVideos.Add(mediaVM);
-                        }
+                        Videos.Add(video);
                     }
                 }
                 else
@@ -448,9 +414,11 @@ namespace VLC_WinRT.Model.Library
                     Debug.WriteLine($"{item.Path} is not a media file");
                 }
             }
-            catch
+            catch (Exception e)
             {
-
+#if DEBUG
+                throw e;
+#endif
             }
         }
 

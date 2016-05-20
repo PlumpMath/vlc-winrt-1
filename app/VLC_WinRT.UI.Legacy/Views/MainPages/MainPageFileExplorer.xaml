@@ -29,8 +29,6 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="{StaticResource FrameMarginGridLength}" />
             </Grid.ColumnDefinitions>
             <AppBarButton x:Name="GoBackButton"
                           Grid.Column="1"
@@ -56,19 +54,6 @@
                               FontFamily="{StaticResource VLCFont}" />
                 </AppBarButton.Icon>
             </AppBarButton>
-            <AppBarButton x:Name="PlayFolderButton"
-                          Grid.Column="4"
-                          Style="{StaticResource AppBarButtonStyleHorizontal}"
-                          HorizontalAlignment="Right"
-                          Label="{Binding Source={StaticResource Strings}, Path=PlayFolder}"
-                          Foreground="{ThemeResource MainColor}"
-                          Command="{Binding CurrentStorageVM.PlayFolderCommand}"
-                          CommandParameter="{Binding CurrentStorageVM.StorageItems}">
-                <AppBarButton.Icon>
-                    <FontIcon Glyph="{StaticResource PlaySymbol}"
-                              FontFamily="{StaticResource VLCFont}" />
-                </AppBarButton.Icon>
-            </AppBarButton>
             <TextBlock x:Name="CurrentFolder"
                        Grid.Column="2"
                        Text="{Binding CurrentStorageVM.CurrentFolderName}"
@@ -77,7 +62,7 @@
                        FontSize="16"
                        TextTrimming="CharacterEllipsis"
                        TextWrapping="NoWrap"
-                       Margin="0,-2,0,0"/>
+                       Margin="0,-2,0,0" />
         </Grid>
 
         <Grid Grid.Row="1"
@@ -85,7 +70,7 @@
             <placeholder:NothingToSeeHere Visibility="{Binding CurrentStorageVM.IsFolderEmpty, Converter={StaticResource BooleanToVisibilityConverter}}" />
             <ProgressBar IsIndeterminate="True"
                          VerticalAlignment="Center"
-                         Visibility="{Binding CurrentStorageVM.LoadingBarVisibility}"/>
+                         Visibility="{Binding CurrentStorageVM.LoadingBarVisibility}" />
             <ListView x:Name="StorageItemsListView"
                       ItemsSource="{Binding CurrentStorageVM.StorageItems}"
                       IsItemClickEnabled="True"
@@ -107,6 +92,18 @@
                     </triggers:EventTrigger>
                 </triggers:Interactions.Triggers>
             </ListView>
+            <AppBarButton x:Name="FloatingActionButton"
+                          Style="{StaticResource CircleButtonStyle}"
+                          VerticalAlignment="Bottom"
+                          HorizontalAlignment="Right"
+                          Margin="{StaticResource FrameMarginHorizontalPlusFooter}"
+                          Command="{Binding CurrentStorageVM.PlayFolderCommand}"
+                          CommandParameter="{Binding CurrentStorageVM.StorageItems}">
+                <AppBarButton.Content>
+                    <FontIcon Glyph="{StaticResource PlaySymbol}"
+                              FontFamily="{StaticResource VLCFont}" />
+                </AppBarButton.Content>
+            </AppBarButton>
         </Grid>
 
         <Grid Grid.Row="1"
@@ -144,11 +141,28 @@
                 </ListView.ItemsPanel>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding Name}"
-                                   Foreground="{ThemeResource BasicForeground}"
-                                   FontSize="16"
-                                   TextTrimming="CharacterEllipsis"
-                                   TextWrapping="NoWrap" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="{StaticResource FrameMarginGridLength}" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Image Source="{Binding ArtworkUrl}"
+                                   Height="36"
+                                   Width="36"
+                                   Stretch="Uniform" />
+                            <FontIcon Foreground="{StaticResource SemiLightMainColor}"
+                                      FontFamily="{StaticResource VLCFont}"
+                                      Glyph="{Binding LogoGlyph}"
+                                      FontSize="32" />
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding Name}"
+                                       Foreground="{ThemeResource BasicForeground}"
+                                       FontSize="16"
+                                       TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap" 
+                                       VerticalAlignment="Center" />
+                        </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>

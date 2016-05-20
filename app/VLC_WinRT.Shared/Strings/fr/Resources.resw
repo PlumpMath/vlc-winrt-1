@@ -139,7 +139,7 @@
     <value>vos commentaires envoyés ! Merci</value>
   </data>
   <data name="FileExplorer" xml:space="preserve">
-    <value>fichiers</value>
+    <value>parcourir</value>
   </data>
   <data name="GoldPartners" xml:space="preserve">
     <value>partenaires Gold</value>
@@ -186,8 +186,8 @@
   <data name="KeyboardShortcuts" xml:space="preserve">
     <value>raccourcis clavier</value>
   </data>
-  <data name="Library" xml:space="preserve">
-    <value>bibliothèque</value>
+  <data name="Local" xml:space="preserve">
+    <value>local</value>
   </data>
   <data name="License" xml:space="preserve">
     <value>Licence</value>
@@ -268,7 +268,7 @@
     <value>notifications</value>
   </data>
   <data name="NotificationWhenSongStarts" xml:space="preserve">
-    <value>notifications = au démarrage de la chanson</value>
+    <value>au démarrage de la chanson</value>
   </data>
   <data name="NoVideosFound" xml:space="preserve">
     <value>Nous n'avons pas trouvé vidéos</value>

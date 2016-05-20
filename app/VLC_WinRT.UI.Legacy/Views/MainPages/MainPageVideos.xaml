@@ -35,6 +35,10 @@
         </Rectangle>
 
         <Grid Background="{ThemeResource ApplicationChromeThemeBrush}">
+            <ProgressBar IsIndeterminate="True"
+                         IsEnabled="True"
+                         VerticalAlignment="Bottom"
+                         Visibility="{Binding IndexingLibraryVisibility}" />
             <ListView Grid.Column="1"
                       x:Name="PanelsListView"
                       ItemsSource="{Binding VideoViewCollection}"
@@ -63,7 +67,7 @@
                                    VerticalAlignment="Center"
                                    FontSize="16"
                                    TextTrimming="CharacterEllipsis"
-                                   TextWrapping="NoWrap"/>
+                                   TextWrapping="NoWrap" />
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
