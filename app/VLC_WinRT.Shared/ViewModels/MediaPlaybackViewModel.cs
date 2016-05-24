@@ -470,11 +470,6 @@ namespace VLC_WinRT.ViewModels
         
         private async void UpdateTime(Int64 time)
         {
-            await UpdateTimeFromUIThread();
-        }
-
-        private async Task UpdateTimeFromUIThread()
-        {
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
             {
                 OnPropertyChanged(nameof(Time));
@@ -487,6 +482,7 @@ namespace VLC_WinRT.ViewModels
 
         public async Task CleanViewModel()
         {
+            var tcs = new TaskCompletionSource<bool>();
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
             {
                 _mediaService.Stop();
@@ -509,7 +505,9 @@ namespace VLC_WinRT.ViewModels
 #endif
                 await TrackCollection.ResetCollection();
                 TrackCollection.IsRunning = false;
+                tcs.SetResult(true);
             });
+            await tcs.Task;
         }
         
         public async void OnLengthChanged(Int64 length)
@@ -536,12 +534,16 @@ namespace VLC_WinRT.ViewModels
             if (mediaService is VLCService)
             {
                 var vlcService = (VLCService)mediaService;
-                var em = vlcService.MediaPlayer.eventManager();
-                em.OnTrackAdded -= OnTrackAdded;
-                em.OnTrackDeleted -= OnTrackDeleted;
+                if (vlcService.MediaPlayer != null)
+                {
+                    var em = vlcService.MediaPlayer.eventManager();
+                    em.OnTrackAdded -= OnTrackAdded;
+                    em.OnTrackDeleted -= OnTrackDeleted;
+                }
 
                 _audioTracks.Clear();
                 _subtitlesTracks.Clear();
+
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
                 {
                     CurrentAudioTrack = null;
@@ -824,7 +826,10 @@ namespace VLC_WinRT.ViewModels
                 }
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
                 {
-                    App.RootPage.StopCompositionAnimationOnSwapChain();
+                    if (PlayingType == PlayingType.Video)
+                    {
+                        App.RootPage.StopCompositionAnimationOnSwapChain();
+                    }
                     TrackCollection.IsRunning = false;
                     IsPlaying = false;
                     PlayingType = PlayingType.NotPlaying;

@@ -26,6 +26,7 @@ using VLC_WinRT.Utils;
 using Panel = VLC_WinRT.Model.Panel;
 using Windows.UI.Core;
 using VLC_WinRT.UI.Legacy.Views.VideoPages.TVShowsViews;
+using VLC_WinRT.UI.UWP.VariousPages;
 #if WINDOWS_UWP
 using VLC_WinRT.UI.UWP.Views.SettingsPages;
 #else
@@ -56,8 +57,7 @@ namespace VLC_WinRT.Services.RunTime
 #if WINDOWS_UWP
             SystemNavigationManager.GetForCurrentView().BackRequested += (s, e) =>
             {
-                e.Handled = true;
-                GoBack_Specific();
+                e.Handled = GoBack_Specific();
             };
             if (ApiInformation.IsApiContractPresent("Windows.Phone.PhoneContract", 1, 0))
 #endif
@@ -118,10 +118,7 @@ namespace VLC_WinRT.Services.RunTime
 #else
         private void HardwareButtons_BackPressed(object sender, Windows.Phone.UI.Input.BackPressedEventArgs e)
         {
-            e.Handled = true;
-            if (Locator.NavigationService.IsPageAMainPage(CurrentPage))
-                e.Handled = false;
-            GoBack_Specific();
+            e.Handled = GoBack_Specific();
         }
 
         public void ShowBackButtonIfCanGoBack()
@@ -133,7 +130,7 @@ namespace VLC_WinRT.Services.RunTime
         }
 #endif
 
-        public void GoBack_Specific()
+        public bool GoBack_Specific()
         {
             switch (CurrentPage)
             {
@@ -141,6 +138,8 @@ namespace VLC_WinRT.Services.RunTime
                 case VLCPage.MainPageMusic:
                 case VLCPage.MainPageFileExplorer:
                 case VLCPage.MainPageNetwork:
+                    return false;
+                    break;
                 case VLCPage.AlbumPage:
                     GoBack_HideFlyout();
                     break;
@@ -208,9 +207,13 @@ namespace VLC_WinRT.Services.RunTime
                 case VLCPage.TvShowView:
                     GoBack_HideFlyout();
                     break;
+                case VLCPage.AboutAppView:
+                    GoBack_HideFlyout();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+            return true;
         }
 
         public bool CanGoBack()
@@ -366,6 +369,11 @@ namespace VLC_WinRT.Services.RunTime
                 case VLCPage.TvShowView:
                     App.SplitShell.FlyoutContent = typeof(ShowEpisodesView);
                     break;
+                case VLCPage.AboutAppView:
+#if WINDOWS_UWP
+                    App.SplitShell.FlyoutContent = typeof(AboutPage);
+#endif
+                    break;
                 default:
                     break;
             }
@@ -390,7 +398,8 @@ namespace VLC_WinRT.Services.RunTime
                    page == VLCPage.VideoPlayerOptionsPanel ||
                    page == VLCPage.FeedbackPage ||
                    page == VLCPage.TvShowView ||
-                   page == VLCPage.TrackEditorPage;
+                   page == VLCPage.TrackEditorPage ||
+                   page == VLCPage.AboutAppView;
         }
 
         VLCPage PageTypeToVLCPage(Type page)

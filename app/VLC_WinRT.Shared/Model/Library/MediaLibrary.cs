@@ -61,15 +61,15 @@ namespace VLC_WinRT.Model.Library
         #endregion
 
         #region collections
-        public SmartCollection<ArtistItem> Artists { get; private set; }
-        public SmartCollection<AlbumItem> Albums { get; private set; }
-        public SmartCollection<TrackItem> Tracks { get; private set; }
-        public SmartCollection<TrackCollection> TrackCollections { get; private set; }
-        
-        public SmartCollection<VideoItem> Videos { get; private set; }
-        public SmartCollection<VideoItem> ViewedVideos { get; private set; }
-        public SmartCollection<VideoItem> CameraRoll { get; private set; }
-        public SmartCollection<TvShow> Shows { get; private set; }
+        public SmartCollection<ArtistItem> Artists { get; private set; } = new SmartCollection<ArtistItem>();
+        public SmartCollection<AlbumItem> Albums { get; private set; } = new SmartCollection<AlbumItem>();
+        public SmartCollection<TrackItem> Tracks { get; private set; } = new SmartCollection<TrackItem>();
+        public SmartCollection<TrackCollection> TrackCollections { get; private set; } = new SmartCollection<TrackCollection>();
+
+        public SmartCollection<VideoItem> Videos { get; private set; } = new SmartCollection<VideoItem>();
+        public SmartCollection<VideoItem> ViewedVideos { get; private set; } = new SmartCollection<VideoItem>();
+        public SmartCollection<VideoItem> CameraRoll { get; private set; } = new SmartCollection<VideoItem>();
+        public SmartCollection<TvShow> Shows { get; private set; } = new SmartCollection<TvShow>();
 
         public SmartCollection<StreamMedia> Streams { get; private set; } = new SmartCollection<StreamMedia>();
         #endregion
@@ -126,7 +126,6 @@ namespace VLC_WinRT.Model.Library
             catch (Exception e)
             {
                 LogHelper.Log(StringsHelper.ExceptionToString(e));
-                MediaItemDiscovererSemaphoreSlim.Release();
             }
             finally
             {
@@ -146,7 +145,6 @@ namespace VLC_WinRT.Model.Library
             catch (Exception e)
             {
                 LogHelper.Log(StringsHelper.ExceptionToString(e));
-                MediaItemDiscovererSemaphoreSlim.Release();
             }
             finally
             {
@@ -196,15 +194,15 @@ namespace VLC_WinRT.Model.Library
         public async Task Initialize()
         {
             MediaLibraryIndexingState = LoadingState.Loading;
-            Artists = new SmartCollection<ArtistItem>();
-            Albums = new SmartCollection<AlbumItem>();
-            Tracks = new SmartCollection<TrackItem>();
-            TrackCollections = new SmartCollection<TrackCollection>();
+            Artists.Clear();
+            Albums.Clear();
+            Tracks.Clear();
+            TrackCollections.Clear();
 
-            Videos = new SmartCollection<VideoItem>();
-            ViewedVideos = new SmartCollection<VideoItem>();
-            CameraRoll = new SmartCollection<VideoItem>();
-            Shows = new SmartCollection<TvShow>();
+            Videos.Clear();
+            ViewedVideos.Clear();
+            CameraRoll.Clear();
+            Shows.Clear();
 
             if (_alreadyIndexedOnce) return;
             _alreadyIndexedOnce = true;
@@ -257,9 +255,9 @@ namespace VLC_WinRT.Model.Library
                 await GetAllMusicFolders();
                 return;
 #endif
-                await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(KnownFolders.MusicLibrary));
-                
                 await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(KnownFolders.VideosLibrary));
+
+                await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(KnownFolders.MusicLibrary));
 
                 if (await KnownFolders.PicturesLibrary.ContainsFolderAsync("Camera Roll"))
                 {
@@ -269,10 +267,12 @@ namespace VLC_WinRT.Model.Library
 
                 // Cortana gets all those artists, albums, songs names
                 var artists = await LoadArtists(null);
-                await CortanaHelper.SetPhraseList("artistName", artists.Select(x => x.Name).ToList());
+                if (artists != null)
+                    await CortanaHelper.SetPhraseList("artistName", artists.Select(x => x.Name).ToList());
 
                 var songs = await LoadTracks();
-                await CortanaHelper.SetPhraseList("songName", songs.Select(x => x.Name).ToList());
+                if (songs != null)
+                    await CortanaHelper.SetPhraseList("songName", songs.Select(x => x.Name).ToList());
             }
             catch (Exception e)
             {
@@ -854,10 +854,7 @@ namespace VLC_WinRT.Model.Library
                         if (await videoItem.LoadFileFromPath() || !string.IsNullOrEmpty(videoItem.Token))
                         {
                             var res = await ThumbsService.GetScreenshot(videoItem.GetMrlAndFromType(true).Item2);
-                            if (res == null)
-                                return;
-                            image = res.Bitmap();
-                            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => videoItem.Duration = TimeSpan.FromMilliseconds(res.Length()));
+                            image = res?.Bitmap();
                         }
                     }
 

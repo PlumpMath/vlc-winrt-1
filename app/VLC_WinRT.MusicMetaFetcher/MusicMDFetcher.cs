@@ -144,6 +144,8 @@ namespace VLC_WinRT.MusicMetaFetcher
 
         public async Task<byte[]> GetArtistPicture(string artistName)
         {
+            artistName = System.Net.WebUtility.UrlEncode(artistName);
+
             var gotArt = await DownloadArtistPictureFromLastFm(artistName) ?? await DownloadArtistPictureFromDeezer(artistName);
             return gotArt;
         }
@@ -153,6 +155,9 @@ namespace VLC_WinRT.MusicMetaFetcher
             byte[] gotArt = null;
             if (!string.IsNullOrEmpty(albumArtist) && !string.IsNullOrEmpty(albumName))
             {
+                albumArtist = System.Net.WebUtility.UrlEncode(albumArtist);
+                albumName = System.Net.WebUtility.UrlEncode(albumName);
+
                 gotArt = await DownloadAlbumPictureFromLastFm(albumName, albumArtist);
                 if (gotArt == null)
                 {
@@ -184,7 +189,11 @@ namespace VLC_WinRT.MusicMetaFetcher
         {
             try
             {
-                if (string.IsNullOrEmpty(artistName)) return null;
+                if (string.IsNullOrEmpty(artistName))
+                    return null;
+
+                artistName = System.Net.WebUtility.UrlEncode(artistName);
+
                 var lastFmClient = new LastFmClient();
                 var similarArtists = await lastFmClient.GetSimilarArtists(artistName);
                 return similarArtists;
@@ -214,7 +223,11 @@ namespace VLC_WinRT.MusicMetaFetcher
 
         public async Task<string> GetArtistBiography(string artistName)
         {
-            if (string.IsNullOrEmpty(artistName)) return null;
+            if (string.IsNullOrEmpty(artistName))
+                return null;
+
+            artistName = System.Net.WebUtility.UrlEncode(artistName);
+
             var biography = string.Empty;
             try
             {
