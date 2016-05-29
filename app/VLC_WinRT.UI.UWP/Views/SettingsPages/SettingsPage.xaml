@@ -43,8 +43,7 @@
                                 </ToggleSwitch.IsOn>
                             </ToggleSwitch>
 
-                            <ComboBox DataContext="{Binding Source={StaticResource Locator}, Path=SettingsVM}"
-                                      ItemsSource="{Binding AccentColors}"
+                            <ComboBox ItemsSource="{Binding AccentColors}"
                                       SelectedItem="{Binding AccentColor, Mode=TwoWay}"
                                       Width="150"
                                       Margin="{StaticResource FrameMarginRight}"
@@ -229,7 +228,7 @@
                         </ListView>
                         <Button Content="{Binding Source={StaticResource Strings}, Path=AddFolder}"
                                 Command="{Binding AddFolderToLibrary}"
-                                CommandParameter="{Binding VideoLibraryId}"/>
+                                CommandParameter="{Binding VideoLibraryId}" />
 
 
                         <TextBlock Text="{Binding Source={StaticResource Strings}, Path=VideoPlayback}"
@@ -278,10 +277,98 @@
             <Grid>
                 <ScrollViewer Style="{StaticResource VerticalScrollViewerStyle}">
                     <StackPanel Margin="{StaticResource FrameMarginHorizontal}">
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=MusicFolders}"
+                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=Equalizer}"
                                    FontSize="22"
                                    Style="{StaticResource SubheaderTextBlockStyle}"
                                    FontWeight="SemiLight" />
+                        <ComboBox ItemsSource="{Binding Presets}"
+                                  SelectedItem="{Binding Equalizer, Mode=TwoWay}"
+                                  Width="200"
+                                  Margin="{StaticResource FrameMarginTop}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Name}"
+                                                   Margin="{StaticResource FrameMarginHorizontal}"
+                                                   Style="{StaticResource BodyTextBlockStyle}"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
+                        <Grid DataContext="{Binding Equalizer}"
+                              Height="120"
+                              IsHitTestVisible="False"
+                              Margin="{StaticResource FrameMarginTop}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <Slider Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[0]}" />
+                            <Slider Grid.Column="1"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[1]}" />
+                            <Slider Grid.Column="2"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[2]}" />
+                            <Slider Grid.Column="3"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[3]}" />
+                            <Slider Grid.Column="4"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[4]}" />
+                            <Slider Grid.Column="5"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[5]}" />
+                            <Slider Grid.Column="6"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[6]}" />
+                            <Slider Grid.Column="7"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[7]}" />
+                            <Slider Grid.Column="8"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[8]}" />
+                            <Slider Grid.Column="9"
+                                    Style="{StaticResource VLCSliderVertical}"
+                                    Maximum="20"
+                                    Minimum="-20"
+                                    Value="{Binding Amps[9]}" />
+                        </Grid>
+
+                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=MusicFolders}"
+                                   FontSize="22"
+                                   Style="{StaticResource SubheaderTextBlockStyle}"
+                                   FontWeight="SemiLight"
+                                   Margin="{StaticResource FrameMarginTop}" />
                         <TextBlock Text="{Binding Source={StaticResource Strings}, Path=MusicFoldersDescription}"
                                    Style="{StaticResource BodyTextBlockStyle}"
                                    Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}" />
@@ -349,10 +436,7 @@
                         <ToggleSwitch  Header="{Binding Source={StaticResource Strings}, Path=NotificationWhenSongStarts}"
                                        IsOn="{Binding NotificationOnNewSong, Mode=TwoWay}"
                                        Margin="{StaticResource FrameMarginTop}" />
-                        <ToggleSwitch  Header="{Binding Source={StaticResource Strings}, Path=EvenIfNotBackground}"
-                                       IsOn="{Binding NotificationOnNewSongForeground, Mode=TwoWay}"
-                                       IsEnabled="{Binding NotificationOnNewSong}" />
-                        
+
                         <TextBlock Text="{Binding Source={StaticResource Strings}, Path=ConnectToLastFM}"
                                    Margin="{StaticResource FrameMarginTop}"
                                    FontSize="22"

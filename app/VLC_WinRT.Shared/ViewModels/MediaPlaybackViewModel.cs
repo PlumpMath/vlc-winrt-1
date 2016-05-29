@@ -58,12 +58,12 @@ namespace VLC_WinRT.ViewModels
         private bool _isPlaying;
         private MediaState _mediaState;
         private PlayingType _playingType;
-        private TrackCollection _trackCollection;
+        private PlaylistItem _trackCollection;
         private TimeSpan _timeTotal;
 
         private int _currentSubtitle;
         private int _currentAudioTrack;
-        
+
         private int _volume = 100;
         private int _speedRate;
         private long _audioDelay;
@@ -81,18 +81,18 @@ namespace VLC_WinRT.ViewModels
 
         #region public props
         public MouseService MouseService { get { return _mouseService; } }
-        
+
         public bool UseVlcLib { get; set; }
-        
+
         public IMediaItem CurrentMedia
         {
             get
             {
-                if (TrackCollection.CurrentTrack == -1) return null;
-                if (TrackCollection.CurrentTrack == TrackCollection.Playlist.Count)
-                    TrackCollection.CurrentTrack--;
-                if (TrackCollection.Playlist.Count == 0) return null;
-                return TrackCollection.Playlist[TrackCollection.CurrentTrack];
+                if (TrackCollection.CurrentMedia == -1)
+                    return null;
+                if (TrackCollection.Playlist.Count == 0)
+                    return null;
+                return TrackCollection.Playlist[TrackCollection.CurrentMedia];
             }
         }
 
@@ -134,7 +134,7 @@ namespace VLC_WinRT.ViewModels
                 {
                     SetProperty(ref _isPlaying, value);
                 }
-                OnPropertyChanged("PlayingType");
+                OnPropertyChanged(nameof(PlayingType));
             }
         }
 
@@ -213,17 +213,11 @@ namespace VLC_WinRT.ViewModels
             }
         }
 
-        public bool IsStream
-        {
-            get { return _isStream; }
-            set { SetProperty(ref _isStream, value); }
-        }
-
-        public TrackCollection TrackCollection
+        public PlaylistItem TrackCollection
         {
             get
             {
-                _trackCollection = _trackCollection ?? new TrackCollection(true);
+                _trackCollection = _trackCollection ?? new PlaylistItem(true);
                 return _trackCollection;
             }
         }
@@ -414,15 +408,6 @@ namespace VLC_WinRT.ViewModels
             }
         }
 
-        public async Task PlayMedia(IMediaItem mediaItem)
-        {
-            if (mediaItem is VideoItem || mediaItem is StreamMedia)
-            {
-                Locator.NavigationService.Go(VLCPage.VideoPlayerPage);
-                await Locator.MediaPlaybackViewModel.SetMedia(mediaItem);
-            }
-        }
-
         /// <summary>
         /// Navigates to the Video Player with the request MRL as parameter
         /// </summary>
@@ -433,14 +418,13 @@ namespace VLC_WinRT.ViewModels
             try
             {
                 var stream = await Locator.MediaLibrary.LoadStreamFromDatabaseOrCreateOne(streamMrl);
-                await Locator.MediaPlaybackViewModel.SetMedia(stream);
+                await Locator.MediaPlaybackViewModel.TrackCollection.Add(new List<IMediaItem> { stream }, true, true, stream);
             }
             catch (Exception e)
             {
                 LogHelper.Log(StringsHelper.ExceptionToString(e));
                 return;
             }
-            Locator.NavigationService.Go(VLCPage.VideoPlayerPage);
         }
 
         /// <summary>
@@ -451,7 +435,8 @@ namespace VLC_WinRT.ViewModels
         public async Task PlayAudioFile(StorageFile file, string token = null)
         {
             var trackItem = await Locator.MediaLibrary.GetTrackItemFromFile(file, token);
-            await PlaylistHelper.PlayTrackFromFilePicker(trackItem);
+
+            await Locator.MediaPlaybackViewModel.TrackCollection.Add(new List<IMediaItem> { trackItem }, true, true, trackItem);
         }
 
         /// <summary>
@@ -464,10 +449,10 @@ namespace VLC_WinRT.ViewModels
             var video = await MediaLibraryHelper.GetVideoItem(file);
             if (token != null)
                 video.Token = token;
-            Locator.VideoPlayerVm.CurrentVideo = video;
-            await PlaylistHelper.Play(video);
+
+            await Locator.MediaPlaybackViewModel.TrackCollection.Add(new List<IMediaItem> { video }, true, true, video);
         }
-        
+
         private async void UpdateTime(Int64 time)
         {
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
@@ -485,7 +470,7 @@ namespace VLC_WinRT.ViewModels
             var tcs = new TaskCompletionSource<bool>();
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                _mediaService.Stop();
+                Stop();
                 PlayingType = PlayingType.NotPlaying;
                 IsPlaying = false;
                 TimeTotal = TimeSpan.Zero;
@@ -509,7 +494,7 @@ namespace VLC_WinRT.ViewModels
             });
             await tcs.Task;
         }
-        
+
         public async void OnLengthChanged(Int64 length)
         {
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
@@ -573,23 +558,18 @@ namespace VLC_WinRT.ViewModels
 
                 if (media is VideoItem)
                 {
-                    // First things first: we need to pause the slideshow here before any action is done by VLC
-                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-                    {
-                        PlayingType = PlayingType.Video;
-                        IsStream = false;
-                        if (Locator.NavigationService.CurrentPage == VLCPage.VideoPlayerPage)
-                        {
-                            Locator.NavigationService.GoBack_Default();
-                        }
-                        Locator.NavigationService.Go(VLCPage.VideoPlayerPage);
-                    });
                     var video = (VideoItem)media;
                     await InitializePlayback(video, autoPlay);
-                    await Locator.VideoPlayerVm.TryUseSubtitleFromFolder();
 
                     if (video.TimeWatched != TimeSpan.FromSeconds(0))
-                        await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => Locator.MediaPlaybackViewModel.Time = (Int64)video.TimeWatched.TotalMilliseconds);
+                    {
+                       await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+                       {
+                           Time = (Int64)video.TimeWatched.TotalMilliseconds;
+                       });
+                    }
+                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => Locator.VideoPlayerVm.CurrentVideo = video);
+                    await Locator.VideoPlayerVm.TryUseSubtitleFromFolder();
 #if WINDOWS_PHONE_APP
                     try
                     {
@@ -601,17 +581,17 @@ namespace VLC_WinRT.ViewModels
                     {
                     }
 #else
+
                     await SetMediaTransportControlsInfo(string.IsNullOrEmpty(video.Name) ? Strings.Video : video.Name);
 #endif
-                    UpdateTileHelper.UpdateMediumTileWithVideoInfo();
+#if WINDOWS_UWP
+                    TileHelper.UpdateVideoTile();
+#else
+                    TileHelper.UpdateMediumTileWithVideoInfo();
+#endif
                 }
                 else if (media is TrackItem)
                 {
-                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-                    {
-                        IsStream = false;
-                        PlayingType = PlayingType.Music;
-                    });
                     var track = (TrackItem)media;
                     StorageFile currentTrackFile;
                     try
@@ -625,7 +605,7 @@ namespace VLC_WinRT.ViewModels
 
                         if (TrackCollection.CanGoNext)
                         {
-                            await PlayNext();
+                            await TrackCollection.PlayNext();
                         }
                         else
                         {
@@ -653,17 +633,11 @@ namespace VLC_WinRT.ViewModels
                             }
                         });
                     }
-                    ApplicationSettingsHelper.SaveSettingsValue(BackgroundAudioConstants.CurrentTrack, TrackCollection.CurrentTrack);
+                    ApplicationSettingsHelper.SaveSettingsValue(BackgroundAudioConstants.CurrentTrack, TrackCollection.CurrentMedia);
                 }
                 else if (media is StreamMedia)
                 {
                     UseVlcLib = true;
-                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-                    {
-                        Locator.VideoPlayerVm.CurrentVideo = null;
-                        Locator.MediaPlaybackViewModel.PlayingType = PlayingType.Video;
-                        IsStream = true;
-                    });
                     await InitializePlayback(media, autoPlay);
                 }
             });
@@ -699,7 +673,7 @@ namespace VLC_WinRT.ViewModels
                         ToastHelper.Basic(Strings.FailFilePlayBackground, false, "background");
 #endif
                         _playerEngine = PlayerEngine.VLC;
-                        _mediaService.Stop();
+                        Stop();
                     }
                 }
                 else
@@ -735,8 +709,9 @@ namespace VLC_WinRT.ViewModels
                     em.OnTrackAdded += Locator.MediaPlaybackViewModel.OnTrackAdded;
                     em.OnTrackDeleted += Locator.MediaPlaybackViewModel.OnTrackDeleted;
                     var mem = vlcService.MediaPlayer.media().eventManager();
-                    mem.OnParsedStatus += Mem_OnParsedStatus;
-                    if (!autoPlay) return;
+                    mem.OnParsedChanged += Mem_OnParsedStatus;
+                    if (!autoPlay)
+                        return;
                     vlcService.Play();
                     break;
                 case PlayerEngine.MediaFoundation:
@@ -768,17 +743,10 @@ namespace VLC_WinRT.ViewModels
 
         async void _mediaService_MediaFailed(object sender, EventArgs e)
         {
-            if (sender is MFService)
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                // MediaFoundation failed to open the media, switching to VLC player
-                await SetMedia(CurrentMedia, true);
-            }
-            else
-            {
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
+                if (!Locator.MainVM.IsInternet)
                 {
-                    if (!Locator.MainVM.IsInternet && IsStream)
-                    {
 #if WINDOWS_UWP
                         await DialogHelper.DisplayDialog(Strings.ConnectionLostPleaseCheck, Strings.Sorry);
 #else
@@ -788,13 +756,13 @@ namespace VLC_WinRT.ViewModels
                     }
                     // ensure we call Stop so we unregister all events
                     Stop();
-                });
-            }
+            });
         }
 
 
         async void OnEndReached()
         {
+            TileHelper.ClearTile();
             switch (PlayingType)
             {
                 case PlayingType.Music:
@@ -821,7 +789,7 @@ namespace VLC_WinRT.ViewModels
                 if (TrackCollection.Repeat)
                 {
                     // ... One More Time!
-                    await StartAgain();
+                    await TrackCollection.StartAgain();
                     return;
                 }
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
@@ -841,48 +809,10 @@ namespace VLC_WinRT.ViewModels
             }
             else
             {
-                await PlayNext();
+                await TrackCollection.PlayNext();
             }
-        }
-
-        public async Task StartAgain()
-        {
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
-            {
-                TrackCollection.CurrentTrack = 0;
-                await Locator.MediaPlaybackViewModel.SetMedia(CurrentMedia, false);
-            });
         }
         
-        public async Task PlayNext()
-        {
-            if (TrackCollection.CanGoNext)
-            {
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
-                {
-                    TrackCollection.CurrentTrack++;
-                    await Locator.MediaPlaybackViewModel.SetMedia(CurrentMedia, false);
-                });
-            }
-            else
-            {
-                UpdateTileHelper.ClearTile();
-            }
-        }
-
-        public async Task PlayPrevious()
-        {
-            if (TrackCollection.CanGoPrevious)
-            {
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => TrackCollection.CurrentTrack--);
-                await Locator.MediaPlaybackViewModel.SetMedia(CurrentMedia, false);
-            }
-            else
-            {
-                UpdateTileHelper.ClearTile();
-            }
-        }
-
         public void SetSizeVideoPlayer(uint x, uint y)
         {
             _mediaService.SetSizeVideoPlayer(x, y);
@@ -968,6 +898,7 @@ namespace VLC_WinRT.ViewModels
         public void Stop()
         {
             _mediaService.Stop();
+            TileHelper.ClearTile();
         }
         #endregion
 
@@ -1076,21 +1007,23 @@ namespace VLC_WinRT.ViewModels
             }
         }
 
-        private async void Mem_OnParsedStatus(ParseStatus parsedStatus)
+        private async void Mem_OnParsedStatus(ParsedStatus parsedStatus)
         {
-            if (parsedStatus != ParseStatus.Done)
+            if (parsedStatus != ParsedStatus.Done)
                 return;
 
             if (!(_mediaService is VLCService)) return;
             var vlcService = (VLCService)_mediaService;
             var mP = vlcService?.MediaPlayer;
             // Get chapters
+            _chapters.Clear();
             var chapters = mP?.chapterDescription(-1);
             foreach (var c in chapters)
             {
                 var vlcChapter = new VLCChapterDescription(c);
                 _chapters.Add(vlcChapter);
             }
+
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
             {
                 OnPropertyChanged(nameof(Chapters));
@@ -1103,6 +1036,27 @@ namespace VLC_WinRT.ViewModels
                 _audioDelay = mP.audioDelay();
                 _spuDelay = mP.spuDelay();
             }
+
+            if (vlcService.MediaPlayer == null)
+                return;
+
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                var videoTrack = vlcService.MediaPlayer.media()?.tracks()?.FirstOrDefault(x => x.type() == TrackType.Video);
+                if (videoTrack == null)
+                {
+                    PlayingType = PlayingType.Music;
+                }
+                else
+                {
+                    PlayingType = PlayingType.Video;
+
+                    if (Locator.NavigationService.CurrentPage != VLCPage.VideoPlayerPage)
+                    {
+                        Locator.NavigationService.Go(VLCPage.VideoPlayerPage);
+                    }
+                }
+            });
         }
 
         public async void UpdateCurrentChapter()
@@ -1221,11 +1175,11 @@ namespace VLC_WinRT.ViewModels
                     break;
                 case SystemMediaTransportControlsButton.Previous:
                     if (Locator.MediaPlaybackViewModel.PlayingType == PlayingType.Music)
-                        await Locator.MediaPlaybackViewModel.PlayPrevious();
+                        await TrackCollection.PlayPrevious();
                     break;
                 case SystemMediaTransportControlsButton.Next:
                     if (Locator.MediaPlaybackViewModel.PlayingType == PlayingType.Music)
-                        await Locator.MediaPlaybackViewModel.PlayNext();
+                        await TrackCollection.PlayNext();
                     break;
             }
         }
@@ -1264,7 +1218,7 @@ namespace VLC_WinRT.ViewModels
 
         public void Dispose()
         {
-            _mediaService.Stop();
+            Stop();
         }
     }
 }

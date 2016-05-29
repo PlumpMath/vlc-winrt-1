@@ -68,13 +68,12 @@ namespace VLC_WinRT.ViewModels.MusicVM
         {
             get
             {
-                if (Locator.MediaPlaybackViewModel.TrackCollection.CurrentTrack == -1
-                    || Locator.MediaPlaybackViewModel.TrackCollection.CurrentTrack == Locator.MediaPlaybackViewModel.TrackCollection.Playlist.Count)
+                if (Locator.MediaPlaybackViewModel.TrackCollection.CurrentMedia == -1
+                    || Locator.MediaPlaybackViewModel.TrackCollection.CurrentMedia == Locator.MediaPlaybackViewModel.TrackCollection.Playlist.Count)
                     return null;
-                if (Locator.MediaPlaybackViewModel.TrackCollection.CurrentTrack > Locator.MediaPlaybackViewModel.TrackCollection.Playlist.Count)
+                if (Locator.MediaPlaybackViewModel.TrackCollection.CurrentMedia > Locator.MediaPlaybackViewModel.TrackCollection.Playlist.Count)
                 {
-                    DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => Locator.MediaPlaybackViewModel.TrackCollection.CurrentTrack = 0);
-                    return null;
+                    Locator.MediaPlaybackViewModel.TrackCollection.SetCurrentMediaPosition(0); return null;
                 }
                 var media = Locator.MediaPlaybackViewModel.CurrentMedia;
                 return (media is TrackItem) ? (TrackItem)media : null;
@@ -115,7 +114,7 @@ namespace VLC_WinRT.ViewModels.MusicVM
 
         private void MediaPlaybackViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(TrackCollection.IsRunning))
+            if (e.PropertyName == nameof(PlaylistItem.IsRunning))
             {
                 OnPropertyChanged(nameof(IsMiniPlayerVisible));
             }
@@ -128,7 +127,6 @@ namespace VLC_WinRT.ViewModels.MusicVM
 
         public async Task UpdateWindows8UI()
         {
-            // Setting the info for windows 8 controls
             string artistName = CurrentTrack?.ArtistName ?? Strings.UnknownArtist;
             string albumName = CurrentTrack?.AlbumName ?? Strings.UnknownAlbum;
             string trackName = CurrentTrack?.Name ?? Strings.UnknownTrack;
@@ -136,14 +134,9 @@ namespace VLC_WinRT.ViewModels.MusicVM
 
             await Locator.MediaPlaybackViewModel.SetMediaTransportControlsInfo(artistName, albumName, trackName, picture);
 
-            var notificationOnNewSong = ApplicationSettingsHelper.ReadSettingsValue("NotificationOnNewSong");
-            if (notificationOnNewSong != null && (bool)notificationOnNewSong)
+            if (Locator.SettingsVM.NotificationOnNewSong && Locator.MainVM.IsBackground)
             {
-                var notificationOnNewSongForeground = ApplicationSettingsHelper.ReadSettingsValue("NotificationOnNewSongForeground");
-                if (Locator.MainVM.IsBackground || (notificationOnNewSongForeground != null && (bool)notificationOnNewSongForeground))
-                {
-                    ToastHelper.ToastImageAndText04(trackName, albumName, artistName, (Locator.MusicPlayerVM.CurrentAlbum == null) ? null : Locator.MusicPlayerVM.CurrentAlbum.AlbumCoverFullUri ?? null);
-                }
+                ToastHelper.ToastImageAndText04(trackName, albumName, artistName, (Locator.MusicPlayerVM.CurrentAlbum == null) ? null : Locator.MusicPlayerVM.CurrentAlbum.AlbumCoverFullUri ?? null, "newsong");
             }
         }
 
@@ -159,7 +152,8 @@ namespace VLC_WinRT.ViewModels.MusicVM
                     if (milliseconds != null && milliseconds.HasValue && double.IsNaN(milliseconds.Value))
                         Locator.MediaPlaybackViewModel.OnLengthChanged((long)milliseconds);
 #endif
-                    if (!ApplicationSettingsHelper.Contains(BackgroundAudioConstants.CurrentTrack)) return;
+                    if (!ApplicationSettingsHelper.Contains(BackgroundAudioConstants.CurrentTrack))
+                        return;
                     var index = (int)ApplicationSettingsHelper.ReadSettingsValue(BackgroundAudioConstants.CurrentTrack);
                     if (Locator.MediaPlaybackViewModel.TrackCollection.Playlist.Any())
                     {
@@ -170,7 +164,7 @@ namespace VLC_WinRT.ViewModels.MusicVM
                             ApplicationSettingsHelper.SaveSettingsValue(BackgroundAudioConstants.CurrentTrack, 0);
                             index = 0;
                         }
-                        Locator.MediaPlaybackViewModel.TrackCollection.CurrentTrack = index;
+                        await Locator.MediaPlaybackViewModel.TrackCollection.SetCurrentMediaPosition(index);
                         await SetCurrentArtist();
                         await SetCurrentAlbum();
                         await UpdatePlayingUI();
@@ -189,11 +183,11 @@ namespace VLC_WinRT.ViewModels.MusicVM
             {
                 Locator.MediaPlaybackViewModel.TrackCollection.IsRunning = true;
                 Locator.MediaPlaybackViewModel.TrackCollection.SetActiveTrackProperty();
-                OnPropertyChanged(nameof(TrackCollection));
+                OnPropertyChanged(nameof(PlaylistItem));
                 OnPropertyChanged(nameof(PlayingType));
                 OnPropertyChanged(nameof(CurrentTrack));
 #if WINDOWS_UWP
-                UpdateTileHelper.UpdateMusicTile();
+                TileHelper.UpdateMusicTile();
 #else
                 UpdateTileHelper.UpdateMediumTileWithMusicInfo();
 #endif
@@ -224,7 +218,7 @@ namespace VLC_WinRT.ViewModels.MusicVM
                 if (LastFMScrobbler == null)
                 {
                     // try to instanciate it
-                    LastFMScrobbler = new LastFMScrobbler("a8eba7d40559e6f3d15e7cca1bfeaa1c", "bd9ad107438d9107296ef799703d478e");
+                    LastFMScrobbler = new LastFMScrobbler(App.ApiKeyLastFm, App.ApiSecretLastFm);
                 }
 
                 if (!LastFMScrobbler.IsConnected)

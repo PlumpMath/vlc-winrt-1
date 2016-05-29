@@ -18,6 +18,12 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
         {
             this.InitializeComponent();
             this.Loaded += CommandBarBottom_Loaded;
+            this.Opened += CommandBarBottom_Opened;
+        }
+
+        private void CommandBarBottom_Opened(object sender, object e)
+        {
+            UpdatePlayerVisibility();
         }
 
         #region init
@@ -63,12 +69,22 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
             NowPlayingArtistGrid.Visibility =
                 PlayPreviousButton.Visibility =
                 PlayNextButton.Visibility =
-                ShuffleButton.Visibility =
-                RepeatButton.Visibility =
-                MiniWindowButton.Visibility =
                 MiniPlayerVisibility;
 
-            this.ClosedDisplayMode = MiniPlayerVisibility == Visibility.Visible ? AppBarClosedDisplayMode.Compact : AppBarClosedDisplayMode.Minimal;
+            var shuffleButton = FindName(nameof(ShuffleButton)) as FrameworkElement;
+            if (shuffleButton != null)
+                shuffleButton.Visibility = MiniPlayerVisibility;
+
+            var repeatButton = FindName(nameof(RepeatButton)) as FrameworkElement;
+            if (repeatButton != null)
+                repeatButton.Visibility = MiniPlayerVisibility;
+
+            var miniWindowButton = FindName(nameof(MiniWindowButton)) as FrameworkElement;
+            if (miniWindowButton != null)
+                miniWindowButton.Visibility = MiniPlayerVisibility;
+
+            if (App.SplitShell.FooterVisibility != AppBarClosedDisplayMode.Hidden)
+                App.SplitShell.FooterVisibility = MiniPlayerVisibility == Visibility.Visible ? AppBarClosedDisplayMode.Compact : AppBarClosedDisplayMode.Minimal;
         }
 
         #endregion
@@ -82,7 +98,7 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
 
         void Responsive()
         {
-            if (this.ActualWidth < 500)
+            if (this.ActualWidth < 420)
             {
                 TrackNameTextBlock.Visibility = ArtistNameTextBlock.Visibility = Visibility.Collapsed;
             }
@@ -115,9 +131,7 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
                             newButton.Style = App.Current.Resources["AppBarTextButtonStyle"] as Style;
                             newButton.Command = ((AppBarButton)item).Command;
                             newButton.CommandParameter = ((AppBarButton)item).CommandParameter;
-
-                            newButton.Width = 160;
-
+                            
                             this.SecondaryCommands.Add(newButton);
                         }
                         else if (item is AppBarToggleButton)
@@ -130,9 +144,7 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
                             newButton.Style = App.Current.Resources["AppBarToggleTextButtonStyle"] as Style;
                             newButton.Command = ((AppBarToggleButton)item).Command;
                             newButton.CommandParameter = ((AppBarToggleButton)item).CommandParameter;
-
-                            newButton.Width = 160;
-
+                            
                             this.SecondaryCommands.Add(newButton);
                         }
                     }
@@ -181,6 +193,7 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
                     }
                 }
             }
+            UpdatePlayerVisibility();
         }
 
         private void PlayButton_RightTapped(object sender, RightTappedRoutedEventArgs e)

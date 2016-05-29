@@ -8,9 +8,9 @@ using Windows.UI.Xaml.Input;
 
 namespace VLC_WinRT.Views.UserControls
 {
-    public sealed partial class CompactVideoItemControl : UserControl
+    public sealed partial class VideoItem : UserControl
     {
-        public CompactVideoItemControl()
+        public VideoItem()
         {
             this.InitializeComponent();
         }
@@ -25,18 +25,18 @@ namespace VLC_WinRT.Views.UserControls
             Flyout.ShowAttachedFlyout((Grid)sender);
         }
 
-        public VideoItem Video
+        public Model.Video.VideoItem Video
         {
-            get { return (VideoItem)GetValue(VideoProperty); }
+            get { return (Model.Video.VideoItem)GetValue(VideoProperty); }
             set { SetValue(VideoProperty, value); }
         }
 
         public static readonly DependencyProperty VideoProperty =
-            DependencyProperty.Register(nameof(Video), typeof(VideoItem), typeof(CompactVideoItemControl), new PropertyMetadata(null, PropertyChangedCallback));
+            DependencyProperty.Register(nameof(Video), typeof(VideoItem), typeof(VideoItem), new PropertyMetadata(null, PropertyChangedCallback));
 
         private static void PropertyChangedCallback(DependencyObject dO, DependencyPropertyChangedEventArgs args)
         {
-            var that = (CompactVideoItemControl)dO;
+            var that = (VideoItem)dO;
             that.Init();
         }
 

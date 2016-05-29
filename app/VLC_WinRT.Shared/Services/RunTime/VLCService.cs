@@ -128,6 +128,7 @@ namespace VLC_WinRT.Services.RunTime
 
             MediaPlayer = new MediaPlayer(vlcMedia);
             LogHelper.Log("PLAYWITHVLC: MediaPlayer instance created");
+            SetEqualizer(Locator.SettingsVM.Equalizer);
             var em = MediaPlayer.eventManager();
             em.OnOpening += Em_OnOpening;
             em.OnBuffering += EmOnOnBuffering;
@@ -199,9 +200,9 @@ namespace VLC_WinRT.Services.RunTime
             await PlayerInstanceReady.Task;
             if (media == null)
                 return null;
-            if (media.parseStatus() == ParseStatus.Init)
+            if (media.parsedStatus() == ParsedStatus.Init)
                 media.parse();
-            if (media.parseStatus() == ParseStatus.Failed)
+            if (media.parsedStatus() == ParsedStatus.Failed)
                 return null;
             var url = media.meta(MediaMeta.ArtworkURL);
             if (!string.IsNullOrEmpty(url))
@@ -209,7 +210,7 @@ namespace VLC_WinRT.Services.RunTime
             return null;
         }
 
-        public async Task<MediaProperties> GetVideoProperties(Media media)
+        public async Task<MediaProperties> GetVideoProperties(MediaProperties mP, Media media)
         {
             if (Instance == null)
             {
@@ -217,12 +218,11 @@ namespace VLC_WinRT.Services.RunTime
             }
             await PlayerInstanceReady.Task;
             if (media == null)
-                return null;
-            if (media.parseStatus() == ParseStatus.Init)
+                return mP;
+            if (media.parsedStatus() == ParsedStatus.Init)
                 media.parse();
-            if (media.parseStatus() == ParseStatus.Failed)
-                return null;
-            var mP = new MediaProperties();
+            if (media.parsedStatus() == ParsedStatus.Failed)
+                return mP;
             mP.Title = media.meta(MediaMeta.Title);
 
             var showName = media.meta(MediaMeta.ShowName);
@@ -276,9 +276,9 @@ namespace VLC_WinRT.Services.RunTime
             await PlayerInstanceReady.Task;
             if (media == null)
                 return null;
-            if (media.parseStatus() == ParseStatus.Init)
+            if (media.parsedStatus() == ParsedStatus.Init)
                 media.parse();
-            if (media.parseStatus() == ParseStatus.Failed)
+            if (media.parsedStatus() == ParsedStatus.Failed)
                 return null;
 
             var mP = new MediaProperties();
@@ -452,6 +452,23 @@ namespace VLC_WinRT.Services.RunTime
         {
             Instance?.UpdateSize(x, y);
         }
+
+        public IList<VLCEqualizer> GetEqualizerPresets()
+        {
+            var presetCount = Equalizer.presetCount();
+            var presets = new List<VLCEqualizer>();
+            for (uint i = 0; i < presetCount; i++)
+            {
+                presets.Add(new VLCEqualizer(i));
+            }
+            return presets;
+        }
+
+        public void SetEqualizer(VLCEqualizer vlcEq)
+        {
+            var eq = new Equalizer(vlcEq.Index);
+            MediaPlayer?.setEqualizer(eq);
+        }
         #endregion
         #region Service Discoverer
         MediaDiscoverer discoverer;
@@ -465,6 +482,8 @@ namespace VLC_WinRT.Services.RunTime
                 await Initialize();
             }
             await PlayerInstanceReady.Task;
+            if (Instance == null)
+                return false;
             lock (discovererLock)
             {
                 if (discoverer == null)
@@ -497,12 +516,12 @@ namespace VLC_WinRT.Services.RunTime
         public Task<MediaList> DiscoverMediaList(Media media)
         {
             var tcs = new TaskCompletionSource<MediaList>();
-            if (media.parseStatus() == ParseStatus.Done)
+            if (media.parsedStatus() == ParsedStatus.Done)
                 tcs.TrySetResult(media.subItems());
             
-            media.eventManager().OnParsedStatus += (ParseStatus s) =>
+            media.eventManager().OnParsedChanged += (ParsedStatus s) =>
             {
-                if (s != ParseStatus.Done)
+                if (s != ParsedStatus.Done)
                     return;
                 tcs.TrySetResult(media.subItems());
             };

@@ -40,11 +40,10 @@ namespace VLC_WinRT.ViewModels.MusicVM
         private ObservableCollection<ArtistItem> _topArtists = new ObservableCollection<ArtistItem>();
         private ObservableCollection<ArtistItem> _recommendedArtists = new ObservableCollection<ArtistItem>(); // recommanded with MusicFlow
 
-        private ObservableCollection<TrackCollection> _trackCollections = new ObservableCollection<TrackCollection>();
+        private ObservableCollection<PlaylistItem> _trackCollections = new ObservableCollection<PlaylistItem>();
 
         private ObservableCollection<GroupItemList<AlbumItem>> _groupedAlbums;
-        private ObservableCollection<AlbumItem> _favoriteAlbums = new ObservableCollection<AlbumItem>();
-        private List<AlbumItem> _randomAlbums = new List<AlbumItem>();
+        private List<AlbumItem> _recommendedAlbums = new List<AlbumItem>();
 
         #endregion
         #region private props
@@ -54,10 +53,10 @@ namespace VLC_WinRT.ViewModels.MusicVM
         private LoadingState _loadingStatePlaylists = LoadingState.NotLoaded;
 
         private ArtistItem _focusOnAnArtist; // recommended with MusicFlow
-        private TrackItem _currentTrack;
+        private TrackItem _currentMedia;
         private AlbumItem _currentAlbum;
         private ArtistItem _currentArtist;
-        private TrackCollection _currentTrackCollection;
+        private PlaylistItem _currentMediaCollection;
         private bool _isLoaded = false;
         private bool _isBusy = false;
         private MusicView _musicView;
@@ -72,21 +71,15 @@ namespace VLC_WinRT.ViewModels.MusicVM
             MusicView.Playlists
         };
 
-        public ObservableCollection<TrackCollection> TrackCollections
+        public ObservableCollection<PlaylistItem> TrackCollections
         {
             get { return Locator.MediaLibrary.TrackCollections; }
         }
-
-        public ObservableCollection<AlbumItem> FavoriteAlbums
+        
+        public List<AlbumItem> RecommendedAlbums
         {
-            get { return _favoriteAlbums; }
-            set { SetProperty(ref _favoriteAlbums, value); }
-        }
-
-        public List<AlbumItem> RandomAlbums
-        {
-            get { return _randomAlbums; }
-            set { SetProperty(ref _randomAlbums, value); }
+            get { return _recommendedAlbums; }
+            set { SetProperty(ref _recommendedAlbums, value); }
         }
 
         public ObservableCollection<ArtistItem> TopArtists
@@ -274,14 +267,14 @@ namespace VLC_WinRT.ViewModels.MusicVM
 
         public TrackItem CurrentTrack
         {
-            get { return _currentTrack; }
-            set { SetProperty(ref _currentTrack, value); }
+            get { return _currentMedia; }
+            set { SetProperty(ref _currentMedia, value); }
         }
 
-        public TrackCollection CurrentTrackCollection
+        public PlaylistItem CurrentTrackCollection
         {
-            get { return _currentTrackCollection; }
-            set { SetProperty(ref _currentTrackCollection, value); }
+            get { return _currentMediaCollection; }
+            set { SetProperty(ref _currentMediaCollection, value); }
         }
         public bool IsCurrentArtistExist
         {
@@ -299,10 +292,8 @@ namespace VLC_WinRT.ViewModels.MusicVM
             RecommendedArtists?.Clear();
             RecommendedArtists = new ObservableCollection<ArtistItem>();
 
-            RandomAlbums?.Clear();
-            RandomAlbums = new List<AlbumItem>();
-            FavoriteAlbums?.Clear();
-            FavoriteAlbums = new ObservableCollection<AlbumItem>();
+            RecommendedAlbums?.Clear();
+            RecommendedAlbums = new List<AlbumItem>();
 
             GC.Collect();
         }
@@ -397,16 +388,25 @@ namespace VLC_WinRT.ViewModels.MusicVM
                 if (Locator.MediaLibrary.Albums != null)
                     Locator.MediaLibrary.Albums.CollectionChanged += Albums_CollectionChanged;
                 await Locator.MediaLibrary.LoadAlbumsFromDatabase();
-                var recommendedAlbums = await Locator.MediaLibrary.LoadRecommendedAlbumsFromDatabase();
+                await RefreshRecommendedAlbums();
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
                 {
-                    RandomAlbums = recommendedAlbums;
-
                     Locator.MainVM.InformationText = String.Empty;
                     LoadingStateAlbums = LoadingState.Loaded;
                     OnPropertyChanged(nameof(IsMusicLibraryEmpty));
                     OnPropertyChanged(nameof(MusicLibraryEmptyVisible));
                 });
+            });
+        }
+
+        public async Task RefreshRecommendedAlbums()
+        {
+            if (MusicView != MusicView.Albums)
+                return;
+            var recommendedAlbums = await Locator.MediaLibrary.LoadRecommendedAlbumsFromDatabase();
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                RecommendedAlbums = recommendedAlbums;
             });
         }
 

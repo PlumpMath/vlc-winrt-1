@@ -143,7 +143,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\MusicLibrary\MusicFlow.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\MusicLibrary\MusicLibraryManagement.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\OSHelper.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Helpers\PlaylistHelper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\SearchHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\StateTriggers\AdaptativeAndValuesStateTrigger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\StateTriggers\DeviceStateTrigger.cs" />
@@ -152,7 +151,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\UIHelpers\CortanaHelper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\UIHelpers\DialogHelper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\UIHelpers\ToastHelper.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Helpers\UpdateTileHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Helpers\TileHelper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\VideoLibrary\TitleDecrapifier.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\VideoLibrary\VideoLibraryManagement.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\Events\InteretConnectionChangedEventArgs.cs" />
@@ -188,6 +187,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Model\VLCAccentColor.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\VLCAction.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\VLCChapterDescription.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Model\VLCEqualizer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\VLCFileExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\VLCItemType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\IMediaItem.cs" />
@@ -222,7 +222,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MediaPlaybackViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MusicVM\MusicLibraryVM.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MusicVM\MusicPlayerVM.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MusicVM\TrackCollection.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MusicVM\PlaylistItem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\Others\BackerCountryViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\Others\SearchViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\Others\SpecialThanksViewModel.cs" />

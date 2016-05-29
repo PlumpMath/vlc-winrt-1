@@ -144,7 +144,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="$(MSBuildThisFileDirectory)Views\UserControls\CompactVideoItemControl.xaml">
+    <Page Include="$(MSBuildThisFileDirectory)Views\UserControls\VideoItem.xaml">
       <SubType>Designer</SubType>
     </Page>
     <Page Include="$(MSBuildThisFileDirectory)Views\UserControls\Flyouts\AlbumMenuFlyout.xaml">
@@ -214,7 +214,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="$(MSBuildThisFileDirectory)Views\UserControls\ShowItemTemplate.xaml">
+    <Page Include="$(MSBuildThisFileDirectory)Views\UserControls\ShowItem.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -363,8 +363,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\CommandBarBottom.xaml.cs">
       <DependentUpon>CommandBarBottom.xaml</DependentUpon>
     </Compile>
-    <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\CompactVideoItemControl.xaml.cs">
-      <DependentUpon>CompactVideoItemControl.xaml</DependentUpon>
+    <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\VideoItem.xaml.cs">
+      <DependentUpon>VideoItem.xaml</DependentUpon>
     </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\Flyouts\AlbumMenuFlyout.xaml.cs">
       <DependentUpon>AlbumMenuFlyout.xaml</DependentUpon>
@@ -429,8 +429,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\Shell\TopBar.xaml.cs">
       <DependentUpon>TopBar.xaml</DependentUpon>
     </Compile>
-    <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\ShowItemTemplate.xaml.cs">
-      <DependentUpon>ShowItemTemplate.xaml</DependentUpon>
+    <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\ShowItem.xaml.cs">
+      <DependentUpon>ShowItem.xaml</DependentUpon>
     </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)Views\UserControls\SliderControl.xaml.cs">
       <DependentUpon>SliderControl.xaml</DependentUpon>
