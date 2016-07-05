@@ -18,7 +18,7 @@
         <Grid x:Name="PlayerControls"
               VerticalAlignment="Center"
               HorizontalAlignment="Center"
-              DataContext="{Binding Source={StaticResource Locator}, Path=MusicPlayerVM.CurrentTrack}"
+              DataContext="{Binding Source={StaticResource Locator}, Path=MusicPlayerVM}"
               Margin="{StaticResource FrameMarginVertical}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -35,19 +35,19 @@
             </Grid.RowDefinitions>
 
             <TextBlock TextAlignment="Center">
-                    <Run Text="{Binding Name}"
+                    <Run Text="{Binding CurrentMediaTitle}"
                          FontWeight="Medium" />
                     <LineBreak />
-                    <Run Text="{Binding ArtistName}"
+                    <Run Text="{Binding CurrentTrack.ArtistName}"
                          Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}" />
                     <Run Text="{Binding Source={StaticResource Strings}, Path=Dash}"
                          Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}" />
-                    <Run Text="{Binding AlbumName}"
+                    <Run Text="{Binding CurrentTrack.AlbumName}"
                          Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}" />
             </TextBlock>
 
             <Image Grid.Row="2"
-                   Source="{Binding AlbumImage}"
+                   Source="{Binding CurrentTrack.AlbumImage}"
                    Stretch="Uniform"
                    MaxHeight="400"
                    MaxWidth="400" />
@@ -68,7 +68,7 @@
                 <AppBarToggleButton Grid.Column="0"
                                     Style="{StaticResource VLCAppBarToggleButton}"
                                     IsCompact="True"
-                                    DataContext="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel.TrackCollection}"
+                                    DataContext="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel.PlaybackService}"
                                     IsChecked="{Binding IsShuffled, Mode=TwoWay}"
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Center"
@@ -84,7 +84,7 @@
                               IsCompact="True"
                               Style="{StaticResource AppBarButtonStyleHuge}"
                               Command="{Binding PlayPreviousCommand}"
-                              IsEnabled="{Binding TrackCollection.CanGoPrevious}">
+                              IsEnabled="{Binding CanGoPrevious}">
                     <AppBarButton.Icon>
                         <FontIcon Glyph="{StaticResource PreviousSymbol}"
                                   FontFamily="{StaticResource VLCFont}"
@@ -117,7 +117,7 @@
                               IsCompact="True"
                               Style="{StaticResource AppBarButtonStyleHuge}"
                               Command="{Binding PlayNextCommand}"
-                              IsEnabled="{Binding TrackCollection.CanGoNext}">
+                              IsEnabled="{Binding CanGoNext}">
                     <AppBarButton.Icon>
                         <FontIcon Glyph="{StaticResource SkipNextSymbol}"
                                   FontFamily="{StaticResource VLCFont}"
@@ -129,7 +129,7 @@
                                     IsCompact="True"
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Center"
-                                    DataContext="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel.TrackCollection}"
+                                    DataContext="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel.PlaybackService}"
                                     IsChecked="{Binding Repeat, Mode=TwoWay}">
                     <AppBarToggleButton.Icon>
                         <FontIcon Glyph="{StaticResource RefreshSymbol}"

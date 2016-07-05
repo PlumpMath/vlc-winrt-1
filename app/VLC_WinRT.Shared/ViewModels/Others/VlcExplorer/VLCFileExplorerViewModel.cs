@@ -11,6 +11,8 @@ using System.Linq;
 using System.Diagnostics;
 using VLC_WinRT.Model.Video;
 using VLC_WinRT.Model.Stream;
+using VLC_WinRT.Helpers;
+using Windows.Foundation;
 
 namespace VLC_WinRT.ViewModels.Others.VlcExplorer
 {
@@ -22,9 +24,17 @@ namespace VLC_WinRT.ViewModels.Others.VlcExplorer
             BackStack.Add(new VLCStorageFolder(media));
             Task.Run(async () =>
             {
-                var url = await Locator.VLCService.GetArtworkUrl(media);
+                var url = await Locator.VLCService.GetArtworkUrl(media, false);
                 base.ArtworkUrl = url;
             });
+
+            var mrl = media.mrl();
+            var schemeEnd = mrl.IndexOf("://");
+            if (schemeEnd > -1)
+            {
+                var scheme = mrl.Substring(0, schemeEnd);
+                base.RootMediaType = scheme;
+            }
         }
 
         public override async Task GetFiles()
@@ -40,7 +50,7 @@ namespace VLC_WinRT.ViewModels.Others.VlcExplorer
                 var currentMedia = BackStack.Last().Media;
                 if (currentMedia == null)
                     return;
-                var mediaList = await Locator.VLCService.DiscoverMediaList(currentMedia);
+                var mediaList = await Locator.MediaLibrary.DiscoverMediaList(currentMedia);
                 for (int i = 0; i < mediaList.count(); i++)
                 {
                     var media = mediaList.itemAtIndex(i);
@@ -81,10 +91,8 @@ namespace VLC_WinRT.ViewModels.Others.VlcExplorer
             {
                 var file = storageItem as VLCStorageFile;
                 // TODO : Difference between audio and video, here ? Hint: i don't think so
-                var video = new StreamMedia();
-                video.Name = file.Name;
-                video.VlcMedia = file.Media;
-                await Locator.MediaPlaybackViewModel.TrackCollection.Add(new List<IMediaItem> { video }, true, true, video);
+                var video = await MediaLibraryHelper.GetStreamItem(file);
+                await Locator.MediaPlaybackViewModel.PlaybackService.SetPlaylist(new List<IMediaItem> { video }, true, true, video);
             }
             OnPropertyChanged(nameof(CurrentFolderName));
         }

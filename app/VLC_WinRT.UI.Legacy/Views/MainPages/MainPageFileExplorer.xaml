@@ -79,7 +79,6 @@
                       IsSwipeEnabled="False"
                       ItemContainerStyle="{StaticResource ListViewItemStyle}"
                       ItemsPanel="{StaticResource WrapPanelTemplate}"
-                      Visibility="{Binding StorageVMs.Count, Converter={StaticResource NegatedCountToVisibilityConverter}}"
                       Margin="{StaticResource FrameMargin}">
                 <triggers:Interactions.Triggers>
                     <triggers:EventTrigger EventName="ItemClick">
@@ -120,7 +119,7 @@
                     </triggers:EventTrigger>
                 </triggers:Interactions.Triggers>
                 <ListView.GroupStyle>
-                    <GroupStyle>
+                    <GroupStyle HidesIfEmpty="True">
                         <GroupStyle.HeaderTemplate>
                             <DataTemplate>
                                 <TextBlock Height="50"
@@ -136,7 +135,7 @@
                 <ListView.ItemsPanel>
                     <ItemsPanelTemplate>
                         <ItemsWrapGrid Orientation="Horizontal"
-                                       ItemWidth="220" />
+                                       ItemWidth="300" />
                     </ItemsPanelTemplate>
                 </ListView.ItemsPanel>
                 <ListView.ItemTemplate>
@@ -155,12 +154,18 @@
                                       FontFamily="{StaticResource VLCFont}"
                                       Glyph="{Binding LogoGlyph}"
                                       FontSize="32" />
+                            <TextBlock Text="{Binding RootMediaType}"
+                                       FontWeight="Bold"
+                                       FontSize="14"
+                                       Visibility="{Binding RootMediaTypeVisible}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
                             <TextBlock Grid.Column="2"
                                        Text="{Binding Name}"
                                        Foreground="{ThemeResource BasicForeground}"
                                        FontSize="16"
                                        TextTrimming="CharacterEllipsis"
-                                       TextWrapping="NoWrap" 
+                                       TextWrapping="NoWrap"
                                        VerticalAlignment="Center" />
                         </Grid>
                     </DataTemplate>

@@ -35,7 +35,7 @@ namespace VLC_WinRT.Services.RunTime
         public MouseHidden OnHidden;
         public OnMouseMoved OnMoved;
 
-        public MouseService()
+        public void Start()
         {
             _cursorTimer = new DispatcherTimer();
             _cursorTimer.Interval = TimeSpan.FromSeconds(CursorHiddenAfterSeconds);
@@ -52,6 +52,16 @@ namespace VLC_WinRT.Services.RunTime
             }
         }
 
+        public void Stop()
+        {
+            _cursorTimer.Tick -= CursorDisappearanceTimer;
+            _cursorTimer.Stop();
+
+            var mouse = MouseDevice.GetForCurrentView();
+            if (mouse != null)
+                mouse.MouseMoved -= MouseMoved;
+        }
+
         private void MouseMoved(MouseDevice sender, MouseEventArgs args)
         {
             InputDetected();
@@ -59,7 +69,8 @@ namespace VLC_WinRT.Services.RunTime
 
         void InputDetected()
         {
-            if (!IsCursorInWindow()) return;
+            if (!IsCursorInWindow())
+                return;
 
             _cursorTimer.Stop();
             _cursorTimer.Start();

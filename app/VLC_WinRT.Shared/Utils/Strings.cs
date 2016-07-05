@@ -86,6 +86,8 @@ namespace VLC_WinRT.Utils
 
         public static readonly string VideoPicFolderPath = "ms-appdata:///local/videoPic";
         public static readonly string MoviePicFolderPath = "ms-appdata:///local/moviePic";
+        public static readonly string MovieSubFolderPath = "ms-appdata:///local/movieSub";
+        public static readonly string TemporaryFolderPath = "ms-appdata:///temp";
 
         public static readonly string FeedbackMailAdress = "modernvlc@outlook.com";
 
@@ -116,6 +118,7 @@ namespace VLC_WinRT.Utils
         public static string RecommendedForYou => _resourcesLoader.GetString(nameof(RecommendedForYou));
         public static string Loading => _resourcesLoader.GetString(nameof(Loading));
         public static string LoadingMusic => _resourcesLoader.GetString(nameof(LoadingMusic));
+        public static string Download => "Download";
         public static string NoInternetConnection => _resourcesLoader.GetString(nameof(NoInternetConnection));
         public static string Website => _resourcesLoader.GetString(nameof(Website));
 
@@ -206,7 +209,7 @@ namespace VLC_WinRT.Utils
         public static string Yes => _resourcesLoader.GetString(nameof(Yes));
         public static string No => _resourcesLoader.GetString(nameof(No));
         public static string AreYouSure => _resourcesLoader.GetString(nameof(AreYouSure));
-
+        public static string Others => "Others";
 
         // ACTIONS
         public static string Back => _resourcesLoader.GetString(nameof(Back));
@@ -234,6 +237,10 @@ namespace VLC_WinRT.Utils
         // DELETE
         public static string DeleteSelected => _resourcesLoader.GetString(nameof(DeleteSelected));
         public static string DeletePlaylist => _resourcesLoader.GetString(nameof(DeletePlaylist));
+
+        // FAVORITE
+        public static string Favorite => "Favorite";
+
 
         // PIN ...
         public static string PinAlbum => _resourcesLoader.GetString(nameof(PinAlbum));

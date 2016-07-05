@@ -6,6 +6,7 @@ using libVLCX;
 using VLC_WinRT.Commands;
 using VLC_WinRT.Commands.VideoLibrary;
 using VLC_WinRT.ViewModels;
+using VLC_WinRT.Commands.StreamsLibrary;
 
 namespace VLC_WinRT.Model.Stream
 {
@@ -14,6 +15,7 @@ namespace VLC_WinRT.Model.Stream
         private string _filePath;
         private TimeSpan _duration;
         private string _title;
+        private bool _favorite;
 
         [PrimaryKey, AutoIncrement, Column("_id")]
         public int Id { get; set; }
@@ -36,6 +38,14 @@ namespace VLC_WinRT.Model.Stream
             set { SetProperty(ref _duration, value); }
         }
 
+        public bool Favorite
+        {
+            get { return _favorite; }
+            set { SetProperty(ref _favorite, value); }
+        }
+
+        public int Order => Favorite ? 0 : 1; // TODO : nopenopenope
+
         [Ignore]
         public StorageFile File
         {
@@ -52,10 +62,10 @@ namespace VLC_WinRT.Model.Stream
             }
             set { throw new NotImplementedException();}
         }
-
-        public bool IsCurrentPlaying { get; set; }
-
+        
         public static DeleteStreamCommand DeleteStream { get; } = new DeleteStreamCommand();
+
+        public static FavoriteStreamCommand FavoriteStream { get; } = new FavoriteStreamCommand();
 
         [Ignore]
         public Media VlcMedia { get; set; }
@@ -75,6 +85,11 @@ namespace VLC_WinRT.Model.Stream
             // Using a Mrl
             // FromLocation : 1
             return new Tuple<FromType, string>(FromType.FromLocation, Path);
+        }
+        
+        public bool IsCurrentPlaying()
+        {
+            throw new NotImplementedException();
         }
     }
 }

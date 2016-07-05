@@ -110,13 +110,12 @@ namespace VLC_WinRT.Model.Video
         }
 
         public Boolean IsPictureLoaded { get; set; }
-
+        public bool IsSubtitlePreLoaded { get; set; }
+        
         public Boolean HasMoviePicture { get; set; }
 
         public Boolean IsCameraRoll { get; set; }
-
-        public bool IsCurrentPlaying { get; set; }
-
+        
         public int TimeWatchedSeconds
         {
             get
@@ -171,6 +170,21 @@ namespace VLC_WinRT.Model.Video
             }
         }
         
+        [Ignore]
+        public string SubtitleUri
+        {
+            get
+            {
+                if (IsSubtitlePreLoaded)
+                {
+                    return $"{Strings.MovieSubFolderPath}/{Id}{SubtitleExtension}";
+                }
+                return string.Empty;
+            }
+        }
+
+        public string SubtitleExtension { get; set; }
+
         [Ignore]
         public StorageFile File
         {
@@ -274,6 +288,11 @@ namespace VLC_WinRT.Model.Video
             if (!string.IsNullOrEmpty(Path))
                 return new Tuple<FromType, string>(FromType.FromPath, Path);
             return null;
+        }
+
+        public bool IsCurrentPlaying()
+        {
+            return Path == Locator.MediaPlaybackViewModel.PlaybackService.Playlist[Locator.MediaPlaybackViewModel.PlaybackService.CurrentMedia].Path;
         }
 
         public async Task<bool> LoadFileFromPath()

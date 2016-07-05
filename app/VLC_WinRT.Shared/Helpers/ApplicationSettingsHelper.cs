@@ -7,6 +7,8 @@
  * Refer to COPYING file of the official project for license
  **********************************************************************/
 
+using System;
+using System.Diagnostics;
 using Windows.Storage;
 
 namespace VLC_WinRT.Helpers
@@ -65,19 +67,26 @@ namespace VLC_WinRT.Helpers
         /// </summary>
         public static void SaveSettingsValue(string key, object value, bool localSettings = true)
         {
-            if (!Contains(key, localSettings))
+            try
             {
-                if (localSettings)
-                    ApplicationData.Current.LocalSettings.Values.Add(key, value);
+                if (!Contains(key, localSettings))
+                {
+                    if (localSettings)
+                        ApplicationData.Current.LocalSettings.Values.Add(key, value);
+                    else
+                        ApplicationData.Current.RoamingSettings.Values.Add(key, value);
+                }
                 else
-                    ApplicationData.Current.RoamingSettings.Values.Add(key, value);
+                {
+                    if (localSettings)
+                        ApplicationData.Current.LocalSettings.Values[key] = value;
+                    else
+                        ApplicationData.Current.RoamingSettings.Values[key] = value;
+                }
             }
-            else
+            catch (Exception e)
             {
-                if (localSettings)
-                    ApplicationData.Current.LocalSettings.Values[key] = value;
-                else
-                    ApplicationData.Current.RoamingSettings.Values[key] = value;
+                Debug.WriteLine("Failed to save settings in the AppSettings container");
             }
         }
     }

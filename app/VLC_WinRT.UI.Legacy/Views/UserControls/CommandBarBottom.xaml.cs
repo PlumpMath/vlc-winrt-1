@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
+using VLC_WinRT.Helpers;
 using VLC_WinRT.ViewModels;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.UI.ViewManagement;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Input;
@@ -31,7 +34,13 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
         {
             UpdatePlayerVisibility();
             Locator.MusicPlayerVM.PropertyChanged += MusicPlayerVM_PropertyChanged;
+            this.SizeChanged += CommandBarBottom_SizeChanged;
             App.SplitShell.ContentSizeChanged += SplitShell_ContentSizeChanged;
+        }
+
+        private void CommandBarBottom_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            Responsive();
         }
 
         private void SplitShell_ContentSizeChanged(double newWidth)
@@ -81,7 +90,14 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
 
             var miniWindowButton = FindName(nameof(MiniWindowButton)) as FrameworkElement;
             if (miniWindowButton != null)
-                miniWindowButton.Visibility = MiniPlayerVisibility;
+            {
+                if (DeviceTypeHelper.GetDeviceType() != DeviceTypeEnum.Tablet || UIViewSettings.GetForCurrentView().UserInteractionMode == UserInteractionMode.Touch)
+                {
+                    miniWindowButton.Visibility = Visibility.Collapsed;
+                }
+                else
+                    miniWindowButton.Visibility = MiniPlayerVisibility;
+            }
 
             if (App.SplitShell.FooterVisibility != AppBarClosedDisplayMode.Hidden)
                 App.SplitShell.FooterVisibility = MiniPlayerVisibility == Visibility.Visible ? AppBarClosedDisplayMode.Compact : AppBarClosedDisplayMode.Minimal;
@@ -196,9 +212,20 @@ namespace VLC_WinRT.UI.Legacy.Views.UserControls
             UpdatePlayerVisibility();
         }
 
-        private void PlayButton_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        private async void PlayButton_RightTapped(object sender, RightTappedRoutedEventArgs e)
         {
-            Locator.MediaPlaybackViewModel.Stop();
+            await StopPlayback();
+        }
+
+        private async void PauseButton_Holding(object sender, HoldingRoutedEventArgs e)
+        {
+            await StopPlayback();
+        }
+
+        public async Task StopPlayback()
+        {
+            Locator.MediaPlaybackViewModel.PlaybackService.Stop();
+            await Locator.MediaPlaybackViewModel.PlaybackService.ResetCollection();
         }
     }
 }

@@ -65,6 +65,8 @@ Thumbnailer::Thumbnailer()
         "--aout=none",
         "--no-video-title-show",
         "--no-stats",
+        "--input-fast-seek",
+        "--avcodec-hw=none",
     };
     p_instance = libvlc_new(sizeof(argv) / sizeof(*argv), argv);
     if (!p_instance) {
@@ -76,7 +78,11 @@ Thumbnailer::Thumbnailer()
 static void CancelPreparse(const libvlc_event_t*, void* data)
 {
     auto sys = reinterpret_cast<thumbnailer_sys_t*>(data);
-    sys->state = THUMB_CANCELLED;
+    // Don't cancel if we managed to seek; that would indicate that we are
+    // about to render a thumbnail
+    int s = THUMB_SEEKING;
+    if (sys->state.compare_exchange_strong(s, THUMB_CANCELLED) == false)
+        return;
     sys->screenshotCompleteEvent.set(nullptr);
 }
 
@@ -162,7 +168,7 @@ IAsyncOperation<PreparseResult^>^ Thumbnailer::TakeScreenshot(Platform::String^ 
 {
     if (!p_instance)
         return nullptr;
-    return concurrency::create_async([&] (concurrency::cancellation_token ct) {
+    return concurrency::create_async([=] (concurrency::cancellation_token ct) {
         thumbnailer_sys_t *sys = new thumbnailer_sys_t();
         auto completionTask = concurrency::create_task(sys->screenshotCompleteEvent, ct);
         size_t len2 = WideCharToMultiByte( CP_UTF8, 0, mrl->Data(), -1, nullptr, 0, nullptr, nullptr );
@@ -175,16 +181,8 @@ IAsyncOperation<PreparseResult^>^ Thumbnailer::TakeScreenshot(Platform::String^ 
         if (m == nullptr)
         {
             sys->screenshotCompleteEvent.set(nullptr);
-            delete sys;
             return completionTask;
         }
-
-        /* Set media to fast with no options */
-        libvlc_media_add_option(m, ":no-audio");
-        libvlc_media_add_option(m, ":no-spu");
-        libvlc_media_add_option(m, ":no-osd");
-        libvlc_media_add_option(m, ":avcodec-hw=none");
-        libvlc_media_add_option( m, ":aout=none" );
 
         libvlc_media_player_t* mp = libvlc_media_player_new_from_media(m);
         libvlc_media_release(m);
@@ -192,7 +190,6 @@ IAsyncOperation<PreparseResult^>^ Thumbnailer::TakeScreenshot(Platform::String^ 
         if (mp == nullptr)
         {
             sys->screenshotCompleteEvent.set(nullptr);
-            delete sys;
             return completionTask;
         }
         sys->eventMgr = libvlc_media_player_event_manager(mp);
@@ -219,18 +216,11 @@ IAsyncOperation<PreparseResult^>^ Thumbnailer::TakeScreenshot(Platform::String^ 
         // Create a local representation to allow it to be captured
 		// TODO: Does not work in UWP. Need to fix.
 
-		auto sce = sys->screenshotCompleteEvent;
-#ifndef WINAPI_FAMILY_UNIVERSAL_APP)
-        sys->cancellationTask = concurrency::create_task([sce, timeoutMs] {
+		auto tcs = sys->timeoutCts;
+        sys->cancellationTask = concurrency::create_task([tcs, timeoutMs, sys] {
             concurrency::wait(timeoutMs);
-            if (!concurrency::is_task_cancellation_requested())
-				sce.set(nullptr);
-#else
-        sys->cancellationTask = concurrency::create_task([sce, timeoutMs, ct] {
-            concurrency::wait(timeoutMs);
-            if (!ct.is_canceled())
-                sce.set(nullptr);
-#endif
+            if (!tcs.get_token().is_canceled())
+                CancelPreparse(nullptr, sys);
 		}, sys->timeoutCts.get_token());
         libvlc_media_player_play(mp);
         //TODO: Specify position

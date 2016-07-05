@@ -268,12 +268,12 @@ namespace VLC_WinRT
 #if WINDOWS_PHONE_APP
             await StatusBarHelper.Initialize();
 #endif
+            await LoadLibraries(disableConsumingTasks).ConfigureAwait(false);
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
             {
                 Locator.NavigationService.Go(Locator.SettingsVM.HomePage);
                 App.SplitShell.FooterContent = new CommandBarBottom();
             }).ConfigureAwait(false);
-            await LoadLibraries(disableConsumingTasks);
         }
 
         private async void Current_VisibilityChanged(object sender, VisibilityChangedEventArgs e)
@@ -294,7 +294,6 @@ namespace VLC_WinRT
                 {
                     Locator.MediaLibrary.DropTablesIfNeeded();
                     await Task.Factory.StartNew(async () => await Locator.MediaLibrary.Initialize()).ConfigureAwait(false);
-                    await Task.Factory.StartNew(async () => await CortanaHelper.Initialize().ConfigureAwait(false));
                 }
             });
         }

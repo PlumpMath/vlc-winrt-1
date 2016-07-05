@@ -8,6 +8,7 @@ using VLC_WinRT.Utils;
 using System.ComponentModel;
 using VLC_WinRT.ViewModels;
 using VLC_WinRT.ViewModels.MusicVM;
+using VLC_WinRT.Model;
 
 namespace VLC_WinRT.Views.UserControls
 {
@@ -22,7 +23,7 @@ namespace VLC_WinRT.Views.UserControls
 
         private void TrackItemTemplate_Unloaded(object sender, RoutedEventArgs e)
         {
-            Locator.MediaPlaybackViewModel.TrackCollection.PropertyChanged -= TrackItemOnPropertyChanged;
+            Locator.MediaPlaybackViewModel.PlaybackService.Playback_MediaSet -= UpdateTrack;
         }
 
         private void Grid_RightTapped(object sender, RightTappedRoutedEventArgs e)
@@ -36,10 +37,8 @@ namespace VLC_WinRT.Views.UserControls
             get { return (TrackItem)GetValue(TrackProperty); }
             set { SetValue(TrackProperty, value); }
         }
-
-        // Using a DependencyProperty as the backing store for Track.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty TrackProperty =
-            DependencyProperty.Register("Track", typeof(TrackItem), typeof(TrackItemTemplate), new PropertyMetadata(null, PropertyChangedCallback));
+        
+        public static readonly DependencyProperty TrackProperty = DependencyProperty.Register(nameof(Track), typeof(TrackItem), typeof(TrackItemTemplate), new PropertyMetadata(null, PropertyChangedCallback));
 
         private static void PropertyChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
         {
@@ -49,34 +48,37 @@ namespace VLC_WinRT.Views.UserControls
 
         public void Init()
         {
-            if (Track == null) return;
+            if (Track == null)
+                return;
+
             NameTextBlock.Text = Track.Name;
             DurationTextBlock.Text = Strings.HumanizeSeconds(Track.Duration.TotalSeconds);
 
-            Locator.MediaPlaybackViewModel.TrackCollection.PropertyChanged += TrackItemOnPropertyChanged;
-            UpdateTrack();
+            Locator.MediaPlaybackViewModel.PlaybackService.Playback_MediaSet += UpdateTrack;
+            UpdateTrack(Track);
         }
 
-        private void TrackItemOnPropertyChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
+        async void UpdateTrack(IMediaItem media)
         {
-            if (propertyChangedEventArgs.PropertyName == nameof(PlaylistItem.CurrentMedia))
+            await DispatchHelper.InvokeAsync(Windows.UI.Core.CoreDispatcherPriority.Low, () =>
             {
-                UpdateTrack();
-            }
-        }
+                if (Track == null)
+                    return;
 
-        void UpdateTrack()
-        {
-            if (Locator.MediaPlaybackViewModel.TrackCollection.CurrentMedia == -1 || Locator.MediaPlaybackViewModel.TrackCollection.Playlist?.Count == 0) return;
-            if (Track.Id == Locator.MediaPlaybackViewModel.TrackCollection.Playlist[Locator.MediaPlaybackViewModel.TrackCollection.CurrentMedia].Id)
-            {
-                previousBrush = NameTextBlock.Foreground;
-                NameTextBlock.Foreground = (Brush)App.Current.Resources["MainColor"];
-            }
-            else
-            {
-                if (previousBrush != null) NameTextBlock.Foreground = previousBrush;
-            }
+                if (Locator.MediaPlaybackViewModel.PlaybackService.CurrentMedia == -1 || Locator.MediaPlaybackViewModel.PlaybackService.Playlist?.Count == 0)
+                    return;
+
+                if (Track.IsCurrentPlaying())
+                {
+                    previousBrush = NameTextBlock.Foreground;
+                    NameTextBlock.Foreground = (Brush)App.Current.Resources["MainColor"];
+                }
+                else
+                {
+                    if (previousBrush != null)
+                        NameTextBlock.Foreground = previousBrush;
+                }
+            });
         }
     }
 }

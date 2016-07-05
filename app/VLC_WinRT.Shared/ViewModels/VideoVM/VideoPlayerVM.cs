@@ -25,6 +25,8 @@ using Windows.Graphics.Display;
 using Windows.UI.Xaml.Media;
 using VLC_WinRT.Commands.VideoPlayer;
 using VLC_WinRT.Model;
+using Windows.UI.Core;
+using VLC_WinRT.MediaMetaFetcher.Fetchers;
 
 namespace VLC_WinRT.ViewModels.VideoVM
 {
@@ -40,6 +42,8 @@ namespace VLC_WinRT.ViewModels.VideoVM
         private bool isVideoPlayerVolumeSettingsVisible;
         private List<VLCSurfaceZoom> zooms;
 
+        private bool _isLoadingSubtitle;
+        private string _loadingSubtitleText;
         #endregion
 
         #region private fields
@@ -127,6 +131,10 @@ namespace VLC_WinRT.ViewModels.VideoVM
         public SurfaceZoomToggleCommand SurfaceZoomToggleCommand { get; private set; } = new SurfaceZoomToggleCommand();
 
         public InitPiPCommand InitPiPCommand { get; private set; } = new InitPiPCommand();
+
+        public DownloadSubtitleCommand DownloadSubtitleCommand { get; private set; } = new DownloadSubtitleCommand();
+        public bool IsLoadingSubtitle { get { return _isLoadingSubtitle; } set { SetProperty(ref _isLoadingSubtitle, value); } }
+        public string LoadingSubtitleText { get { return _loadingSubtitleText; } set { SetProperty(ref _loadingSubtitleText, value); } }
         #endregion
 
         #region public fields
@@ -151,6 +159,10 @@ namespace VLC_WinRT.ViewModels.VideoVM
         #endregion
 
         #region constructors
+        public VideoPlayerVM()
+        {
+            Locator.MediaPlaybackViewModel.PlaybackService.Playback_MediaSet += PlaybackService_Playback_MediaSet;
+        }
         #endregion
 
         #region methods
@@ -166,6 +178,9 @@ namespace VLC_WinRT.ViewModels.VideoVM
             {
                 DisplayInformation.AutoRotationPreferences = DisplayOrientations.Landscape;
             }
+
+            if (Locator.MediaPlaybackViewModel.CurrentMedia is VideoItem)
+                Task.Run(async () => await UpdateCurrentVideo(Locator.MediaPlaybackViewModel.CurrentMedia as VideoItem));
         }
 
         public void OnNavigatedFrom()
@@ -181,6 +196,7 @@ namespace VLC_WinRT.ViewModels.VideoVM
             Locator.Slideshow.IsPaused = false;
             DisplayInformation.AutoRotationPreferences = DisplayOrientations.None;
             DisplayHelper.PrivateDisplayCall(false);
+            LoadingSubtitleText = string.Empty;
         }
 
         public async Task<bool> TryUseSubtitleFromFolder()
@@ -235,14 +251,13 @@ namespace VLC_WinRT.ViewModels.VideoVM
 
         public void ChangeSurfaceZoom(VLCSurfaceZoom desiredZoom)
         {
-            if (!(Locator.MediaPlaybackViewModel._mediaService is VLCService)) return;
-
             var screenWidth = App.RootPage.SwapChainPanel.ActualWidth;
             var screenHeight = App.RootPage.SwapChainPanel.ActualHeight;
+            
+            var videoTrack = Locator.VLCService.MediaPlayer?.media()?.tracks()?.FirstOrDefault(x => x.type() == TrackType.Video);
 
-            var vlcService = (VLCService)Locator.MediaPlaybackViewModel._mediaService;
-            var videoTrack = vlcService.MediaPlayer?.media()?.tracks()?.FirstOrDefault(x => x.type() == TrackType.Video);
-            if (videoTrack == null) return;
+            if (videoTrack == null)
+                return;
             var videoHeight = videoTrack.height();
             var videoWidth = videoTrack.width();
 
@@ -324,6 +339,25 @@ namespace VLC_WinRT.ViewModels.VideoVM
             }
             App.RootPage.SwapChainPanel.RenderTransform = scaleTransform;
         }
+        #endregion
+
+        #region events
+
+        private async void PlaybackService_Playback_MediaSet(IMediaItem media)
+        {
+            if (!(media is VideoItem))
+                return;
+
+            await UpdateCurrentVideo(media as VideoItem);
+            await Locator.MediaPlaybackViewModel.SetMediaTransportControlsInfo(CurrentVideo.Name);
+        }
+
+        async Task UpdateCurrentVideo(VideoItem video)
+        {
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => Locator.VideoPlayerVm.CurrentVideo = video);
+            await TryUseSubtitleFromFolder();
+        }
+
         #endregion
     }
 }

@@ -126,9 +126,10 @@ namespace VLC_WinRT.ViewModels.VideoVM
         #region contructors
         public VideoLibraryVM()
         {
-            Locator.MediaLibrary.OnIndexing += MediaLibrary_OnIndexing;
         }
+        #endregion
 
+        #region methods
         private async void MediaLibrary_OnIndexing(LoadingState obj)
         {
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => OnPropertyChanged(nameof(IndexingLibraryVisibility)));
@@ -143,6 +144,7 @@ namespace VLC_WinRT.ViewModels.VideoVM
         public void OnNavigatedTo()
         {
             ResetLibrary();
+            Locator.MediaLibrary.OnIndexing += MediaLibrary_OnIndexing;
         }
 
         public void OnNavigatedToAllVideos()
@@ -187,6 +189,7 @@ namespace VLC_WinRT.ViewModels.VideoVM
         public void OnNavigatedFrom()
         {
             ResetLibrary();
+            Locator.MediaLibrary.OnIndexing -= MediaLibrary_OnIndexing;
         }
 
         Task InitializeVideos()
@@ -207,6 +210,7 @@ namespace VLC_WinRT.ViewModels.VideoVM
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
                 {
                     OnPropertyChanged(nameof(ViewedVideos));
+                    OnPropertyChanged(nameof(Videos));
                     Locator.MainVM.InformationText = String.Empty;
                     LoadingStateAllVideos = LoadingState.Loaded;
                 });
@@ -268,9 +272,6 @@ namespace VLC_WinRT.ViewModels.VideoVM
                 OnPropertyChanged(nameof(CameraRoll));
             });
         }
-        #endregion
-
-        #region methods
         #endregion
     }
 }

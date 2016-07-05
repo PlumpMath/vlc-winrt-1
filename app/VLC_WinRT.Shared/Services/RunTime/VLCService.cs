@@ -55,7 +55,7 @@ namespace VLC_WinRT.Services.RunTime
                     "--verbose=3",
                     "--no-stats",
                     "--avcodec-fast",
-                    string.Format("--freetype-font={0}\\segoeui.ttf",Windows.ApplicationModel.Package.Current.InstalledLocation.Path),
+                    string.Format("--freetype-font={0}\\NotoSans-Regular.ttf",Windows.ApplicationModel.Package.Current.InstalledLocation.Path),
                     "--subsdec-encoding",
                     Locator.SettingsVM.SubtitleEncodingValue == "System" ? "" : Locator.SettingsVM.SubtitleEncodingValue
                 };
@@ -82,13 +82,13 @@ namespace VLC_WinRT.Services.RunTime
                         (dialog, title, text, intermidiate, position, cancel) => { },
                         (dialog) => dialog.dismiss(),
                         (dialog, position, text) => { });
+                    PlayerInstanceReady.TrySetResult(Instance != null);
                 }
                 catch (Exception e)
                 {
                     LogHelper.Log("VLC Service : Couldn't create VLC Instance\n" + StringsHelper.ExceptionToString(e));
                     ToastHelper.Basic(Strings.FailStartVLCEngine);
                 }
-                PlayerInstanceReady.TrySetResult(Instance != null);
             });
         }
 
@@ -160,6 +160,7 @@ namespace VLC_WinRT.Services.RunTime
 
         private void EmOnOnStopped()
         {
+            StatusChanged?.Invoke(this, MediaState.Stopped);
             OnStopped?.Invoke(this);
         }
 
@@ -191,7 +192,7 @@ namespace VLC_WinRT.Services.RunTime
             return new Media(Instance, filePath, FromType.FromPath);
         }
 
-        public async Task<string> GetArtworkUrl(Media media)
+        public async Task<string> GetArtworkUrl(Media media, bool shouldParse = true)
         {
             if (Instance == null)
             {
@@ -200,8 +201,13 @@ namespace VLC_WinRT.Services.RunTime
             await PlayerInstanceReady.Task;
             if (media == null)
                 return null;
-            if (media.parsedStatus() == ParsedStatus.Init)
-                media.parse();
+
+            if (shouldParse)
+            {
+                if (media.parsedStatus() != ParsedStatus.Done && media.parsedStatus() != ParsedStatus.Skipped)
+                    media.parse();
+            }
+
             if (media.parsedStatus() == ParsedStatus.Failed)
                 return null;
             var url = media.meta(MediaMeta.ArtworkURL);
@@ -219,7 +225,7 @@ namespace VLC_WinRT.Services.RunTime
             await PlayerInstanceReady.Task;
             if (media == null)
                 return mP;
-            if (media.parsedStatus() == ParsedStatus.Init)
+            if (media.parsedStatus() != ParsedStatus.Done && media.parsedStatus() != ParsedStatus.Skipped)
                 media.parse();
             if (media.parsedStatus() == ParsedStatus.Failed)
                 return mP;
@@ -276,7 +282,7 @@ namespace VLC_WinRT.Services.RunTime
             await PlayerInstanceReady.Task;
             if (media == null)
                 return null;
-            if (media.parsedStatus() == ParsedStatus.Init)
+            if (media.parsedStatus() != ParsedStatus.Done && media.parsedStatus() != ParsedStatus.Skipped)
                 media.parse();
             if (media.parsedStatus() == ParsedStatus.Failed)
                 return null;
@@ -323,7 +329,7 @@ namespace VLC_WinRT.Services.RunTime
         #region playback actions
         public void SetSubtitleFile(string mrl)
         {
-            MediaPlayer?.setSubtitleFile(mrl);
+            MediaPlayer?.addSlave(SlaveType.Subtitle, mrl, true);
         }
 
         public void SetSubtitleTrack(int i)
@@ -469,66 +475,6 @@ namespace VLC_WinRT.Services.RunTime
             var eq = new Equalizer(vlcEq.Index);
             MediaPlayer?.setEqualizer(eq);
         }
-        #endregion
-        #region Service Discoverer
-        MediaDiscoverer discoverer;
-        public event MediaListItemAdded MediaListItemAdded;
-        public event MediaListItemDeleted MediaListItemDeleted;
-        private object discovererLock = new object();
-        public async Task<bool> InitDiscoverer()
-        {
-            if (Instance == null)
-            {
-                await Initialize();
-            }
-            await PlayerInstanceReady.Task;
-            if (Instance == null)
-                return false;
-            lock (discovererLock)
-            {
-                if (discoverer == null)
-                {
-                    discoverer = new MediaDiscoverer(Instance, "upnp");
-                    var mediaList = discoverer.mediaList();
-                    if (mediaList == null)
-                        return false;
-
-                    var eventManager = mediaList.eventManager();
-                    eventManager.onItemAdded += MediaListItemAdded;
-                    eventManager.onItemDeleted += MediaListItemDeleted;
-                }
-
-                if (!discoverer.isRunning())
-                    discoverer.start();
-            }
-            return true;
-        }
-
-        public void DisposeDiscoverer()
-        {
-            lock (discovererLock)
-            {
-                if (discoverer.isRunning())
-                    discoverer.stop();
-            }
-        }
-
-        public Task<MediaList> DiscoverMediaList(Media media)
-        {
-            var tcs = new TaskCompletionSource<MediaList>();
-            if (media.parsedStatus() == ParsedStatus.Done)
-                tcs.TrySetResult(media.subItems());
-            
-            media.eventManager().OnParsedChanged += (ParsedStatus s) =>
-            {
-                if (s != ParsedStatus.Done)
-                    return;
-                tcs.TrySetResult(media.subItems());
-            };
-            media.parseWithOptions(ParseFlags.FetchLocal | ParseFlags.FetchNetwork | ParseFlags.Local | ParseFlags.Network);
-            return tcs.Task;
-        }
-
         #endregion
     }
 }

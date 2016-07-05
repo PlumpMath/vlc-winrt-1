@@ -294,8 +294,6 @@ namespace VLC_WinRT.ViewModels.MusicVM
 
             RecommendedAlbums?.Clear();
             RecommendedAlbums = new List<AlbumItem>();
-
-            GC.Collect();
         }
 
         public void OnNavigatedTo()
@@ -367,6 +365,9 @@ namespace VLC_WinRT.ViewModels.MusicVM
                 Locator.MediaLibrary.Albums.CollectionChanged -= Albums_CollectionChanged;
                 Locator.MediaLibrary.Albums.Clear();
             }
+
+            RecommendedAlbums?.Clear();
+
             return DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
             {
                 GroupedAlbums = null;

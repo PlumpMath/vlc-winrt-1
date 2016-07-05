@@ -13,39 +13,33 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Windows.Storage;
 using System;
-using System.IO;
 using Windows.UI.Core;
 using VLC_WinRT.Helpers;
 using VLC_WinRT.Model;
 using VLC_WinRT.Services.Interface;
-using Windows.System.Display;
 using VLC_WinRT.Commands.MediaPlayback;
 using System.Threading.Tasks;
-using Windows.Foundation.Collections;
 using Windows.Storage.Streams;
-using Windows.UI.Notifications;
-using Windows.UI.Popups;
 using Autofac;
-using VLC_WinRT.Helpers.MusicLibrary;
-using VLC_WinRT.Model.Music;
-using VLC_WinRT.Model.Stream;
-using VLC_WinRT.Model.Video;
 using VLC_WinRT.Services.RunTime;
 using VLC_WinRT.ViewModels.MusicVM;
-using VLC_WinRT.Commands;
-using VLC_WinRT.BackgroundAudioPlayer.Model;
-#if WINDOWS_PHONE_APP
+#if TWO_PROCESS_BGA
 using Windows.Media.Playback;
+using VLC_WinRT.BackgroundHelpers;
 #endif
 using libVLCX;
-using VLC_WinRT.BackgroundHelpers;
 using VLC_WinRT.Utils;
-using WinRTXamlToolkit.Controls.Extensions;
 using VLC_WinRT.Commands.VideoPlayer;
 using VLC_WinRT.Commands.VideoLibrary;
 using VLC_WinRT.SharedBackground.Database;
 using System.Linq;
 using VLC_WinRT.Helpers.UIHelpers;
+using VLC_WinRT.Commands.MusicPlayer;
+using VLC_WinRT.MediaMetaFetcher.Fetchers;
+using VLC_WinRT.Model.Video;
+using VLC_WinRT.Model.Stream;
+using Windows.UI.Popups;
+using Windows.UI.Xaml;
 
 namespace VLC_WinRT.ViewModels
 {
@@ -54,72 +48,66 @@ namespace VLC_WinRT.ViewModels
         #region private props
         private MouseService _mouseService;
         private SystemMediaTransportControls _systemMediaTransportControls;
-        private PlayerEngine _playerEngine;
         private bool _isPlaying;
-        private MediaState _mediaState;
-        private PlayingType _playingType;
-        private PlaylistItem _trackCollection;
+        private PlaybackService _playbackService;
         private TimeSpan _timeTotal;
-
-        private int _currentSubtitle;
-        private int _currentAudioTrack;
 
         private int _volume = 100;
         private int _speedRate;
         private long _audioDelay;
         private long _spuDelay;
-        private bool _isStream;
         private int _bufferingProgress;
+        private Visibility _loadingMedia = Visibility.Collapsed;
         #endregion
 
-        #region private fields
-        private List<DictionaryKeyValue> _subtitlesTracks = new List<DictionaryKeyValue>();
-        private List<DictionaryKeyValue> _audioTracks = new List<DictionaryKeyValue>();
-        private List<VLCChapterDescription> _chapters = new List<VLCChapterDescription>();
-        private bool _isBuffered;
+        public PlaybackService PlaybackService
+        {
+            get
+            {
+                _playbackService = _playbackService ?? new PlaybackService();
+                return _playbackService;
+            }
+        }
+        public MouseService MouseService { get { return _mouseService; } }
+
+
+        #region commands
+
+        public PlayTrackCollCommand PlayTrackCollCommand { get; } = new PlayTrackCollCommand();
+
+        public PlayPauseCommand PlayOrPauseCommand { get; } = new PlayPauseCommand();
+
+        public PlayNextCommand PlayNextCommand { get; } = new PlayNextCommand();
+
+        public PlayPreviousCommand PlayPreviousCommand { get; } = new PlayPreviousCommand();
+
+        public OpenSubtitleCommand OpenSubtitleCommand { get; } = new OpenSubtitleCommand();
+
+        public PickMediaCommand PickMediaCommand { get; } = new PickMediaCommand();
+
+        public StopVideoCommand GoBack { get; } = new StopVideoCommand();
+
+        public ChangePlaybackSpeedRateCommand ChangePlaybackSpeedRateCommand { get; } = new ChangePlaybackSpeedRateCommand();
+
+        public ChangeVolumeCommand ChangeVolumeCommand { get; } = new ChangeVolumeCommand();
+
+        public ChangeAudioDelayCommand ChangeAudioDelayCommand { get; } = new ChangeAudioDelayCommand();
+
+        public ChangeSpuDelayCommand ChangeSpuDelayCommand { get; } = new ChangeSpuDelayCommand();
         #endregion
 
         #region public props
-        public MouseService MouseService { get { return _mouseService; } }
-
-        public bool UseVlcLib { get; set; }
 
         public IMediaItem CurrentMedia
         {
             get
             {
-                if (TrackCollection.CurrentMedia == -1)
+                if (PlaybackService.CurrentMedia == -1)
                     return null;
-                if (TrackCollection.Playlist.Count == 0)
+                if (PlaybackService.Playlist.Count == 0)
                     return null;
-                return TrackCollection.Playlist[TrackCollection.CurrentMedia];
+                return PlaybackService.Playlist[PlaybackService.CurrentMedia];
             }
-        }
-
-        public IMediaService _mediaService
-        {
-            get
-            {
-                switch (_playerEngine)
-                {
-                    case PlayerEngine.VLC:
-                        return Locator.VLCService;
-#if WINDOWS_PHONE_APP
-                    case PlayerEngine.BackgroundMFPlayer:
-                        return Locator.BGPlayerService;
-#endif
-                    default:
-                        //todo : Implement properly BackgroundPlayerService 
-                        //todo : so we get rid ASAP of this default switch
-                        return Locator.VLCService;
-                }
-            }
-        }
-
-        public PlayingType PlayingType
-        {
-            get { return _playingType; }
-            set { SetProperty(ref _playingType, value); }
         }
 
         public bool IsPlaying
@@ -128,21 +116,22 @@ namespace VLC_WinRT.ViewModels
             {
                 return _isPlaying;
             }
-            set
+            private set
             {
                 if (value != _isPlaying)
                 {
                     SetProperty(ref _isPlaying, value);
                 }
-                OnPropertyChanged(nameof(PlayingType));
+                OnPropertyChanged(nameof(PlayButtonVisible));
             }
         }
 
-        public MediaState MediaState
-        {
-            get { return _mediaState; }
-            set { SetProperty(ref _mediaState, value); }
-        }
+        public Visibility PlayButtonVisible => PlaybackService.IsRunning && !IsPlaying ? Visibility.Visible : Visibility.Collapsed;
+
+        public bool CanGoNext => PlaybackService.CanGoNext();
+        public bool CanGoPrevious => PlaybackService.CanGoPrevious();
+
+        public MediaState MediaState => PlaybackService.PlayerState;
 
         public int Volume
         {
@@ -155,7 +144,7 @@ namespace VLC_WinRT.ViewModels
                 Debug.WriteLine("new volume set: " + value);
                 if (value > 0 && value <= 100)
                 {
-                    _mediaService?.SetVolume(value);
+                    PlaybackService.Volume = value;
                     SetProperty(ref _volume, value);
                 }
             }
@@ -171,7 +160,7 @@ namespace VLC_WinRT.ViewModels
             {
                 SetProperty(ref _speedRate, value);
                 float r = (float)value / 100;
-                SetRate(r);
+                PlaybackService.SetSpeedRate(r);
             }
         }
 
@@ -187,11 +176,8 @@ namespace VLC_WinRT.ViewModels
             }
             set
             {
-                if (_mediaService is VLCService)
-                {
-                    (_mediaService as VLCService).SetAudioDelay(value * 1000);
-                    SetProperty(ref _audioDelay, value);
-                }
+                PlaybackService.SetAudioDelay(value);
+                SetProperty(ref _audioDelay, value);
             }
         }
 
@@ -205,46 +191,10 @@ namespace VLC_WinRT.ViewModels
             get { return _spuDelay; }
             set
             {
-                if (_mediaService is VLCService)
-                {
-                    (_mediaService as VLCService).SetSpuDelay(value * 1000);
-                    SetProperty(ref _spuDelay, value);
-                }
+                PlaybackService.SetSpuDelay(value);
+                SetProperty(ref _spuDelay, value);
             }
         }
-
-        public PlaylistItem TrackCollection
-        {
-            get
-            {
-                _trackCollection = _trackCollection ?? new PlaylistItem(true);
-                return _trackCollection;
-            }
-        }
-
-        public PlayPauseCommand PlayOrPauseCommand { get; } = new PlayPauseCommand();
-
-        public PlayNextCommand PlayNextCommand { get; } = new PlayNextCommand();
-
-        public PlayPreviousCommand PlayPreviousCommand { get; } = new PlayPreviousCommand();
-
-        public SetSubtitleTrackCommand SetSubtitleTrackCommand { get; } = new SetSubtitleTrackCommand();
-
-        public OpenSubtitleCommand OpenSubtitleCommand { get; } = new OpenSubtitleCommand();
-
-        public SetAudioTrackCommand SetAudioTrackCommand { get; } = new SetAudioTrackCommand();
-
-        public PickMediaCommand PickMediaCommand { get; } = new PickMediaCommand();
-
-        public StopVideoCommand GoBack { get; } = new StopVideoCommand();
-
-        public ChangePlaybackSpeedRateCommand ChangePlaybackSpeedRateCommand { get; } = new ChangePlaybackSpeedRateCommand();
-
-        public ChangeVolumeCommand ChangeVolumeCommand { get; } = new ChangeVolumeCommand();
-
-        public ChangeAudioDelayCommand ChangeAudioDelayCommand { get; } = new ChangeAudioDelayCommand();
-
-        public ChangeSpuDelayCommand ChangeSpuDelayCommand { get; } = new ChangeSpuDelayCommand();
 
         public TimeSpan TimeTotal
         {
@@ -254,11 +204,7 @@ namespace VLC_WinRT.ViewModels
 
         public int BufferingProgress => _bufferingProgress;
 
-        public bool IsBuffered
-        {
-            get { return _isBuffered; }
-            set { SetProperty(ref _isBuffered, value); }
-        }
+        public bool IsBuffered => _bufferingProgress == 100;
 
         /**
          * Elasped time in milliseconds
@@ -267,11 +213,11 @@ namespace VLC_WinRT.ViewModels
         {
             get
             {
-                return _mediaService.GetTime();
+                return PlaybackService.GetTime();
             }
             set
             {
-                _mediaService.SetTime(value);
+                PlaybackService.SetTime(value);
             }
         }
 
@@ -279,11 +225,11 @@ namespace VLC_WinRT.ViewModels
         {
             get
             {
-                return _mediaService.GetPosition();
+                return PlaybackService.GetPosition();
             }
             set
             {
-                _mediaService.SetPosition(value);
+                PlaybackService.SetPosition(value);
             }
         }
 
@@ -291,15 +237,12 @@ namespace VLC_WinRT.ViewModels
         {
             get
             {
-                if (_currentSubtitle < 0 || _currentSubtitle >= Subtitles.Count)
-                    return null;
-                return Subtitles[_currentSubtitle];
+                return PlaybackService.GetCurrentSubtitleTrack();
             }
             set
             {
-                _currentSubtitle = Subtitles.IndexOf(value);
                 if (value != null)
-                    SetSubtitleTrackCommand.Execute(value.Id);
+                    PlaybackService.SetSubtitleTrack(value);
             }
         }
 
@@ -307,15 +250,12 @@ namespace VLC_WinRT.ViewModels
         {
             get
             {
-                if (_currentAudioTrack == -1 || _currentAudioTrack >= AudioTracks.Count)
-                    return null;
-                return AudioTracks[_currentAudioTrack];
+                return PlaybackService.GetCurrentAudioTrack();
             }
             set
             {
-                _currentAudioTrack = AudioTracks.IndexOf(value);
                 if (value != null)
-                    SetAudioTrackCommand.Execute(value.Id);
+                    PlaybackService.SetAudioTrack(value);
             }
         }
 
@@ -323,56 +263,57 @@ namespace VLC_WinRT.ViewModels
         {
             get
             {
-                if (!(_mediaService is VLCService)) return null;
-                var vlcService = (VLCService)_mediaService;
-                var currentChapter = vlcService.MediaPlayer?.chapter();
-                if (_chapters?.Count > 0 && currentChapter.HasValue)
-                {
-                    return _chapters[currentChapter.Value];
-                }
-                return null;
+                return PlaybackService.GetCurrentChapter();
             }
             set
             {
-                if (!(_mediaService is VLCService)) return;
-                var vlcService = (VLCService)_mediaService;
-                if (value == CurrentChapter) return;
-                var index = _chapters.IndexOf(value);
-                if (index > -1)
-                {
-                    vlcService.MediaPlayer.setChapter(index);
-                }
+                if (value != null)
+                    PlaybackService.SetCurrentChapter(value);
             }
         }
         #endregion
 
         #region public fields
-        public BackgroundTrackDatabase BackgroundTrackRepository { get; set; } = new BackgroundTrackDatabase();
-        public List<DictionaryKeyValue> AudioTracks
-        {
-            get { return _audioTracks; }
-            set { _audioTracks = value; }
-        }
+        public List<DictionaryKeyValue> AudioTracks => PlaybackService.GetAudioTracks();
 
-        public List<DictionaryKeyValue> Subtitles
-        {
-            get { return _subtitlesTracks; }
-            set { _subtitlesTracks = value; }
-        }
+        public List<DictionaryKeyValue> Subtitles => PlaybackService.GetSubtitleTracks();
 
-        public List<VLCChapterDescription> Chapters
-        {
-            get { return _chapters; }
-            set { _chapters = value; }
-        }
+        public List<VLCChapterDescription> Chapters => PlaybackService.GetChapters();
 
+        public Visibility LoadingMedia { get { return _loadingMedia; } set { SetProperty(ref _loadingMedia, value); } }
         #endregion
 
         #region constructors
         public MediaPlaybackViewModel()
         {
             _mouseService = App.Container.Resolve<MouseService>();
+            PlaybackService.Playback_StatusChanged += Playback_StatusChanged;
+            PlaybackService.Playback_MediaTimeChanged += Playback_MediaTimeChanged;
+            PlaybackService.Playback_MediaLengthChanged += Playback_MediaLengthChanged;
+            PlaybackService.Playback_MediaBuffering += Playback_MediaBuffering;
+            PlaybackService.Playback_MediaEndReached += Playback_MediaEndReach;
+            PlaybackService.Playback_MediaFailed += Playback_MediaFailed;
+            PlaybackService.Playback_MediaStopped += Playback_MediaStopped;
+            PlaybackService.Playback_MediaTracksUpdated += Playback_MediaTracksUpdated;
+            PlaybackService.Playback_MediaParsed += Playback_MediaParsed;
+
+            PlaybackService.Playback_MediaSet += PlaybackService_MediaSet;
+            App.Container.Resolve<NetworkListenerService>().InternetConnectionChanged += MediaPlaybackViewModel_InternetConnectionChanged;
         }
+
+        private async void MediaPlaybackViewModel_InternetConnectionChanged(object sender, Model.Events.InternetConnectionChangedEventArgs e)
+        {
+            if (!e.IsConnected && IsPlaying && CurrentMedia is StreamMedia)
+            {
+                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
+                {
+                    GoBack.Execute(null);
+                    var dialog = new MessageDialog(Strings.MediaCantBeRead.ToUpperFirstChar(), Strings.NoInternetConnection.ToUpperFirstChar());
+                    await dialog.ShowAsync();
+                });
+            }
+        }
+
         #endregion
 
         #region methods
@@ -403,7 +344,7 @@ namespace VLC_WinRT.ViewModels
             }
             else if (fileType == VLCFileExtensions.VLCFileType.Subtitle)
             {
-                if (IsPlaying && PlayingType == PlayingType.Video)
+                if (IsPlaying && PlaybackService.PlayingType == PlayingType.Video)
                     OpenSubtitleCommand.Execute(file);
             }
         }
@@ -415,10 +356,22 @@ namespace VLC_WinRT.ViewModels
         /// <returns></returns>
         public async Task PlayStream(string streamMrl)
         {
+            Uri uri;
             try
             {
-                var stream = await Locator.MediaLibrary.LoadStreamFromDatabaseOrCreateOne(streamMrl);
-                await Locator.MediaPlaybackViewModel.TrackCollection.Add(new List<IMediaItem> { stream }, true, true, stream);
+                uri = new Uri(streamMrl);
+            }
+            catch(UriFormatException ex)
+            {
+                var md = new MessageDialog(string.Format("{0} is invalid ({1})", streamMrl, ex.Message), "Invalid URI");
+                await md.ShowAsync();
+                return;
+            }
+            try
+            {
+                var stream = await Locator.MediaLibrary.LoadStreamFromDatabaseOrCreateOne(uri.ToString());
+                LoadingMedia = Visibility.Visible;
+                await Locator.MediaPlaybackViewModel.PlaybackService.SetPlaylist(new List<IMediaItem> { stream }, true, true, stream);
             }
             catch (Exception e)
             {
@@ -436,7 +389,7 @@ namespace VLC_WinRT.ViewModels
         {
             var trackItem = await Locator.MediaLibrary.GetTrackItemFromFile(file, token);
 
-            await Locator.MediaPlaybackViewModel.TrackCollection.Add(new List<IMediaItem> { trackItem }, true, true, trackItem);
+            await Locator.MediaPlaybackViewModel.PlaybackService.SetPlaylist(new List<IMediaItem> { trackItem }, true, true, trackItem);
         }
 
         /// <summary>
@@ -447,375 +400,11 @@ namespace VLC_WinRT.ViewModels
         public async Task PlayVideoFile(StorageFile file, string token = null)
         {
             var video = await MediaLibraryHelper.GetVideoItem(file);
+            video.Id = -1;
             if (token != null)
                 video.Token = token;
 
-            await Locator.MediaPlaybackViewModel.TrackCollection.Add(new List<IMediaItem> { video }, true, true, video);
-        }
-
-        private async void UpdateTime(Int64 time)
-        {
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
-            {
-                OnPropertyChanged(nameof(Time));
-                // Assume position also changes when time does.
-                // We could/should also watch OnPositionChanged event, but let's save us
-                // the cost of another dispatched call.
-                OnPropertyChanged(nameof(Position));
-            });
-        }
-
-        public async Task CleanViewModel()
-        {
-            var tcs = new TaskCompletionSource<bool>();
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
-            {
-                Stop();
-                PlayingType = PlayingType.NotPlaying;
-                IsPlaying = false;
-                TimeTotal = TimeSpan.Zero;
-#if WINDOWS_PHONE_APP
-                try
-                {
-                    // music clean
-                    if (BackgroundAudioHelper.Instance?.CurrentState != MediaPlayerState.Stopped)
-                    {
-                        BackgroundAudioHelper.Instance?.Pause();
-                        await App.BackgroundAudioHelper.ResetCollection(ResetType.NormalReset);
-                    }
-                }
-                catch
-                {
-                }
-#endif
-                await TrackCollection.ResetCollection();
-                TrackCollection.IsRunning = false;
-                tcs.SetResult(true);
-            });
-            await tcs.Task;
-        }
-
-        public async void OnLengthChanged(Int64 length)
-        {
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                if (length < 0) return;
-                TimeTotal = TimeSpan.FromMilliseconds(length);
-            });
-        }
-
-        private async void OnStopped(IMediaService mediaService)
-        {
-            Debug.WriteLine("OnStopped event called from " + mediaService);
-            mediaService.MediaFailed -= _mediaService_MediaFailed;
-            mediaService.StatusChanged -= PlayerStateChanged;
-            mediaService.TimeChanged -= UpdateTime;
-
-            mediaService.OnLengthChanged -= OnLengthChanged;
-            mediaService.OnStopped -= OnStopped;
-            mediaService.OnEndReached -= OnEndReached;
-            mediaService.OnBuffering -= MediaServiceOnOnBuffering;
-
-            if (mediaService is VLCService)
-            {
-                var vlcService = (VLCService)mediaService;
-                if (vlcService.MediaPlayer != null)
-                {
-                    var em = vlcService.MediaPlayer.eventManager();
-                    em.OnTrackAdded -= OnTrackAdded;
-                    em.OnTrackDeleted -= OnTrackDeleted;
-                }
-
-                _audioTracks.Clear();
-                _subtitlesTracks.Clear();
-
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-                {
-                    CurrentAudioTrack = null;
-                    CurrentSubtitle = null;
-                    OnPropertyChanged(nameof(AudioTracks));
-                    OnPropertyChanged(nameof(Subtitles));
-                    OnPropertyChanged(nameof(CurrentAudioTrack));
-                    OnPropertyChanged(nameof(CurrentSubtitle));
-                });
-            }
-            else if (mediaService is MFService)
-            {
-                var mfService = (MFService)mediaService;
-                mfService.Instance.Source = null;
-            }
-            mediaService.SetNullMediaPlayer();
-        }
-
-        public Task SetMedia(IMediaItem media, bool forceVlcLib = false, bool autoPlay = true)
-        {
-            return Task.Run(async () =>
-            {
-                if (media == null)
-                    throw new ArgumentNullException(nameof(media), "Media parameter is missing. Can't play anything");
-                Stop();
-                UseVlcLib = forceVlcLib;
-
-                if (media is VideoItem)
-                {
-                    var video = (VideoItem)media;
-                    await InitializePlayback(video, autoPlay);
-
-                    if (video.TimeWatched != TimeSpan.FromSeconds(0))
-                    {
-                       await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-                       {
-                           Time = (Int64)video.TimeWatched.TotalMilliseconds;
-                       });
-                    }
-                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => Locator.VideoPlayerVm.CurrentVideo = video);
-                    await Locator.VideoPlayerVm.TryUseSubtitleFromFolder();
-#if WINDOWS_PHONE_APP
-                    try
-                    {
-                        var messageDictionary = new ValueSet();
-                        messageDictionary.Add(BackgroundAudioConstants.ClearUVC, "");
-                        BackgroundMediaPlayer.SendMessageToBackground(messageDictionary);
-                    }
-                    catch
-                    {
-                    }
-#else
-
-                    await SetMediaTransportControlsInfo(string.IsNullOrEmpty(video.Name) ? Strings.Video : video.Name);
-#endif
-#if WINDOWS_UWP
-                    TileHelper.UpdateVideoTile();
-#else
-                    TileHelper.UpdateMediumTileWithVideoInfo();
-#endif
-                }
-                else if (media is TrackItem)
-                {
-                    var track = (TrackItem)media;
-                    StorageFile currentTrackFile;
-                    try
-                    {
-                        currentTrackFile = track.File ?? await StorageFile.GetFileFromPathAsync(track.Path);
-                    }
-                    catch (Exception exception)
-                    {
-                        await Locator.MediaLibrary.RemoveTrackFromCollectionAndDatabase(track);
-                        await Task.Delay(500);
-
-                        if (TrackCollection.CanGoNext)
-                        {
-                            await TrackCollection.PlayNext();
-                        }
-                        else
-                        {
-                            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () => Locator.NavigationService.GoBack_Specific());
-                        }
-                        return;
-                    }
-                    await InitializePlayback(track, autoPlay);
-                    if (_playerEngine != PlayerEngine.BackgroundMFPlayer)
-                    {
-                        await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
-                        {
-                            await Locator.MusicPlayerVM.SetCurrentArtist();
-                            await Locator.MusicPlayerVM.SetCurrentAlbum();
-                            await Locator.MusicPlayerVM.UpdatePlayingUI();
-                            await Locator.MusicPlayerVM.Scrobble();
-#if WINDOWS_PHONE_APP
-#else
-                            await Locator.MusicPlayerVM.UpdateWindows8UI();
-#endif
-                            if (Locator.MusicPlayerVM.CurrentArtist != null)
-                            {
-                                Locator.MusicPlayerVM.CurrentArtist.PlayCount++;
-                                await Locator.MediaLibrary.Update(Locator.MusicPlayerVM.CurrentArtist);
-                            }
-                        });
-                    }
-                    ApplicationSettingsHelper.SaveSettingsValue(BackgroundAudioConstants.CurrentTrack, TrackCollection.CurrentMedia);
-                }
-                else if (media is StreamMedia)
-                {
-                    UseVlcLib = true;
-                    await InitializePlayback(media, autoPlay);
-                }
-            });
-        }
-
-        public async Task InitializePlayback(IMediaItem media, bool autoPlay)
-        {
-            // First set the player engine
-            // For videos AND music, we have to try first with Microsoft own player
-            // Then we register to Failed callback. If it doesn't work, we set ForceVlcLib to true
-            if (UseVlcLib)
-                _playerEngine = PlayerEngine.VLC;
-            else
-            {
-                var path = "";
-                if (!string.IsNullOrEmpty(media.Path))
-                    path = Path.GetExtension(media.Path);
-                else if (media.File != null)
-                    path = media.File.FileType;
-                if (media is TrackItem)
-                {
-                    if (VLCFileExtensions.MFSupported.Contains(path.ToLower()))
-                    {
-#if WINDOWS_PHONE_APP
-                        _playerEngine = PlayerEngine.BackgroundMFPlayer;
-#else
-                        _playerEngine = PlayerEngine.VLC;
-#endif
-                    }
-                    else
-                    {
-#if WINDOWS_PHONE_APP
-                        ToastHelper.Basic(Strings.FailFilePlayBackground, false, "background");
-#endif
-                        _playerEngine = PlayerEngine.VLC;
-                        Stop();
-                    }
-                }
-                else
-                {
-                    _playerEngine = PlayerEngine.VLC;
-                }
-            }
-            
-            _mediaService.MediaFailed += _mediaService_MediaFailed;
-            _mediaService.StatusChanged += PlayerStateChanged;
-            _mediaService.TimeChanged += UpdateTime;
-
-            if (autoPlay)
-            {
-                // Reset the libVLC log file
-                await LogHelper.ResetBackendFile();
-            }
-
-            // Send the media we want to play
-            await _mediaService.SetMediaFile(media);
-
-            _mediaService.OnLengthChanged += OnLengthChanged;
-            _mediaService.OnStopped += OnStopped;
-            _mediaService.OnEndReached += OnEndReached;
-            _mediaService.OnBuffering += MediaServiceOnOnBuffering;
-
-            switch (_playerEngine)
-            {
-                case PlayerEngine.VLC:
-                    var vlcService = (VLCService)_mediaService;
-                    if (vlcService.MediaPlayer == null) return;
-                    var em = vlcService.MediaPlayer.eventManager();
-                    em.OnTrackAdded += Locator.MediaPlaybackViewModel.OnTrackAdded;
-                    em.OnTrackDeleted += Locator.MediaPlaybackViewModel.OnTrackDeleted;
-                    var mem = vlcService.MediaPlayer.media().eventManager();
-                    mem.OnParsedChanged += Mem_OnParsedStatus;
-                    if (!autoPlay)
-                        return;
-                    vlcService.Play();
-                    break;
-                case PlayerEngine.MediaFoundation:
-                    var mfService = (MFService)_mediaService;
-                    if (mfService == null) return;
-
-                    if (!autoPlay) return;
-                    _mediaService.Play();
-                    break;
-                case PlayerEngine.BackgroundMFPlayer:
-                    if (!autoPlay) return;
-                    _mediaService.Play(CurrentMedia.Id);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => SpeedRate = 100);
-        }
-
-        private async void MediaServiceOnOnBuffering(int f)
-        {
-            _bufferingProgress = f;
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                IsBuffered = f == 100;
-                OnPropertyChanged(nameof(BufferingProgress));
-            });
-        }
-
-        async void _mediaService_MediaFailed(object sender, EventArgs e)
-        {
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
-            {
-                if (!Locator.MainVM.IsInternet)
-                {
-#if WINDOWS_UWP
-                        await DialogHelper.DisplayDialog(Strings.ConnectionLostPleaseCheck, Strings.Sorry);
-#else
-                        var lostStreamDialog = new MessageDialog(Strings.ConnectionLostPleaseCheck, Strings.Sorry);
-                        await lostStreamDialog.ShowAsyncQueue();
-#endif
-                    }
-                    // ensure we call Stop so we unregister all events
-                    Stop();
-            });
-        }
-
-
-        async void OnEndReached()
-        {
-            TileHelper.ClearTile();
-            switch (PlayingType)
-            {
-                case PlayingType.Music:
-                    break;
-                case PlayingType.Video:
-                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
-                    {
-                        if (Locator.VideoPlayerVm.CurrentVideo != null)
-                            Locator.VideoPlayerVm.CurrentVideo.TimeWatchedSeconds = 0;
-                    });
-                    if (Locator.VideoPlayerVm.CurrentVideo != null)
-                        await Locator.MediaLibrary.UpdateVideo(Locator.VideoPlayerVm.CurrentVideo).ConfigureAwait(false);
-                    break;
-                case PlayingType.NotPlaying:
-                    break;
-                default:
-                    break;
-            }
-
-            bool canGoNext = TrackCollection.Playlist.Count > 0 && TrackCollection.CanGoNext;
-            if (!canGoNext)
-            {
-                // Playlist is finished
-                if (TrackCollection.Repeat)
-                {
-                    // ... One More Time!
-                    await TrackCollection.StartAgain();
-                    return;
-                }
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
-                {
-                    if (PlayingType == PlayingType.Video)
-                    {
-                        App.RootPage.StopCompositionAnimationOnSwapChain();
-                    }
-                    TrackCollection.IsRunning = false;
-                    IsPlaying = false;
-                    PlayingType = PlayingType.NotPlaying;
-                    if (!Locator.NavigationService.GoBack_Default())
-                    {
-                        Locator.NavigationService.Go(Locator.SettingsVM.HomePage);
-                    }
-                });
-            }
-            else
-            {
-                await TrackCollection.PlayNext();
-            }
-        }
-        
-        public void SetSizeVideoPlayer(uint x, uint y)
-        {
-            _mediaService.SetSizeVideoPlayer(x, y);
+            await Locator.MediaPlaybackViewModel.PlaybackService.SetPlaylist(new List<IMediaItem> { video }, true, true, video);
         }
 
         public async Task UpdatePosition()
@@ -827,91 +416,19 @@ namespace VLC_WinRT.ViewModels
             }
         }
 
-        public void SetSubtitleTrack(int i)
-        {
-            switch (_playerEngine)
-            {
-                case PlayerEngine.VLC:
-                    var vlcService = (VLCService)_mediaService;
-                    vlcService.SetSubtitleTrack(i);
-                    break;
-                case PlayerEngine.MediaFoundation:
-                    break;
-                case PlayerEngine.BackgroundMFPlayer:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
 
-        public void SetAudioTrack(int i)
-        {
-            switch (_playerEngine)
-            {
-                case PlayerEngine.VLC:
-                    var vlcService = (VLCService)_mediaService;
-                    vlcService.SetAudioTrack(i);
-                    break;
-                case PlayerEngine.MediaFoundation:
-                    break;
-                case PlayerEngine.BackgroundMFPlayer:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        public void OpenSubtitleMrl(string mrl)
-        {
-            switch (_playerEngine)
-            {
-                case PlayerEngine.VLC:
-                    var vlcService = (VLCService)_mediaService;
-                    vlcService.SetSubtitleFile(mrl);
-                    break;
-                case PlayerEngine.MediaFoundation:
-                    break;
-                case PlayerEngine.BackgroundMFPlayer:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        public void SetRate(float rate)
-        {
-            switch (_playerEngine)
-            {
-                case PlayerEngine.VLC:
-                    _mediaService.SetSpeedRate(rate);
-                    break;
-                case PlayerEngine.MediaFoundation:
-                    _mediaService.SetSpeedRate(rate);
-                    break;
-                case PlayerEngine.BackgroundMFPlayer:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        public void Stop()
-        {
-            _mediaService.Stop();
-            TileHelper.ClearTile();
-        }
         #endregion
 
         #region Events
-        private async void PlayerStateChanged(object sender, MediaState e)
+        private async void Playback_StatusChanged(object sender, MediaState e)
         {
             try
             {
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
                 {
                     IsPlaying = e == MediaState.Playing || e == MediaState.Buffering;
-                    MediaState = e;
 
+                    LoadingMedia = Visibility.Collapsed;
                     switch (MediaState)
                     {
                         case MediaState.NothingSpecial:
@@ -923,6 +440,7 @@ namespace VLC_WinRT.ViewModels
                         case MediaState.Playing:
                             if (_systemMediaTransportControls != null)
                                 _systemMediaTransportControls.PlaybackStatus = MediaPlaybackStatus.Playing;
+
                             break;
                         case MediaState.Paused:
                             if (_systemMediaTransportControls != null)
@@ -942,116 +460,112 @@ namespace VLC_WinRT.ViewModels
             catch { }
         }
 
-        public async void OnTrackAdded(TrackType type, int trackId)
+        private async void Playback_MediaTimeChanged(long time)
         {
-            if (type == TrackType.Unknown || type == TrackType.Video)
-                return;
-            List<DictionaryKeyValue> target;
-            IList<TrackDescription> source;
-            if (type == TrackType.Audio)
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
             {
-                target = _audioTracks;
-                source = ((VLCService)_mediaService).MediaPlayer?.audioTrackDescription();
-            }
-            else
+                OnPropertyChanged(nameof(Time));
+                // Assume position also changes when time does.
+                // We could/should also watch OnPositionChanged event, but let's save us
+                // the cost of another dispatched call.
+                OnPropertyChanged(nameof(Position));
+            });
+        }
+
+        private async void Playback_MediaLengthChanged(long length)
+        {
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
             {
-                target = _subtitlesTracks;
-                source = ((VLCService)_mediaService).MediaPlayer?.spuDescription();
+                if (length < 0)
+                    return;
+                TimeTotal = TimeSpan.FromMilliseconds(length);
+            });
+        }
+
+        private async void Playback_MediaStopped(IMediaService mediaService)
+        {
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
+            {
+                OnPropertyChanged(nameof(AudioTracks));
+                OnPropertyChanged(nameof(Subtitles));
+                OnPropertyChanged(nameof(CurrentAudioTrack));
+                OnPropertyChanged(nameof(CurrentSubtitle));
+                await ClearMediaTransportControls();
+            });
+        }
+
+        private async void Playback_MediaBuffering(int f)
+        {
+            _bufferingProgress = f;
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                OnPropertyChanged(nameof(BufferingProgress));
+                OnPropertyChanged(nameof(IsBuffered));
+            });
+        }
+
+        private async void Playback_MediaFailed(object sender, EventArgs e)
+        {
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
+            {
+                if (CurrentMedia is StreamMedia)
+                {
+                    await Locator.MediaLibrary.RemoveStreamFromCollectionAndDatabase(CurrentMedia as StreamMedia);
+                }
+                GoBack.Execute(null);
+            });
+        }
+
+        private async void Playback_MediaEndReach()
+        {
+            switch (PlaybackService.PlayingType)
+            {
+                case PlayingType.Music:
+                    break;
+                case PlayingType.Video:
+                    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
+                    {
+                        if (Locator.VideoPlayerVm.CurrentVideo != null)
+                            Locator.VideoPlayerVm.CurrentVideo.TimeWatchedSeconds = 0;
+                    });
+                    if (Locator.VideoPlayerVm.CurrentVideo != null)
+                        await Locator.MediaLibrary.UpdateVideo(Locator.VideoPlayerVm.CurrentVideo).ConfigureAwait(false);
+                    break;
+                case PlayingType.NotPlaying:
+                    break;
+                default:
+                    break;
             }
 
-            target?.Clear();
-            foreach (var t in source)
+            if (!PlaybackService.CanGoNext())
             {
-                target?.Add(new DictionaryKeyValue()
+                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
                 {
-                    Id = t.id(),
-                    Name = t.name(),
+                    if (PlaybackService.PlayingType == PlayingType.Video)
+                    {
+                        App.RootPage.StopCompositionAnimationOnSwapChain();
+                    }
+                    IsPlaying = false;
+                    if (!Locator.NavigationService.GoBack_Default())
+                    {
+                        Locator.NavigationService.Go(Locator.SettingsVM.HomePage);
+                    }
                 });
             }
-
-            // This assumes we have a "Disable" track for both subtitles & audio
-            if (type == TrackType.Subtitle && CurrentSubtitle == null && _subtitlesTracks?.Count > 1)
-            {
-                _currentSubtitle = 1;
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => OnPropertyChanged("CurrentSubtitle"));
-            }
-            else if (type == TrackType.Audio && CurrentAudioTrack == null && _audioTracks?.Count > 1)
-            {
-                _currentAudioTrack = 1;
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => OnPropertyChanged("CurrentAudioTrack"));
-            }
         }
 
-        public async void OnTrackDeleted(TrackType type, int trackId)
+        private async void Playback_MediaTracksUpdated(TrackType type, int trackId)
         {
-            if (type == TrackType.Unknown || type == TrackType.Video)
-                return;
-            List<DictionaryKeyValue> target;
-            if (type == TrackType.Audio)
-                target = _audioTracks;
-            else
-                target = _subtitlesTracks;
-
-            target.RemoveAll((t) => t.Id == trackId);
-            if (target.Count > 0)
-                return;
-            if (type == TrackType.Subtitle)
-            {
-                _currentSubtitle = -1;
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => OnPropertyChanged("CurrentSubtitle"));
-            }
-            else
-            {
-                _currentAudioTrack = -1;
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => OnPropertyChanged("CurrentAudioTrack"));
-            }
-        }
-
-        private async void Mem_OnParsedStatus(ParsedStatus parsedStatus)
-        {
-            if (parsedStatus != ParsedStatus.Done)
-                return;
-
-            if (!(_mediaService is VLCService)) return;
-            var vlcService = (VLCService)_mediaService;
-            var mP = vlcService?.MediaPlayer;
-            // Get chapters
-            _chapters.Clear();
-            var chapters = mP?.chapterDescription(-1);
-            foreach (var c in chapters)
-            {
-                var vlcChapter = new VLCChapterDescription(c);
-                _chapters.Add(vlcChapter);
-            }
-
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
             {
-                OnPropertyChanged(nameof(Chapters));
-                OnPropertyChanged(nameof(CurrentChapter));
-            });
+                OnPropertyChanged(nameof(AudioTracks));
+                OnPropertyChanged(nameof(Subtitles));
+                OnPropertyChanged(nameof(CurrentSubtitle));
+                OnPropertyChanged(nameof(CurrentAudioTrack));
 
-            // Get subtitle delay etc
-            if (mP != null)
-            {
-                _audioDelay = mP.audioDelay();
-                _spuDelay = mP.spuDelay();
-            }
-
-            if (vlcService.MediaPlayer == null)
-                return;
-
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                var videoTrack = vlcService.MediaPlayer.media()?.tracks()?.FirstOrDefault(x => x.type() == TrackType.Video);
-                if (videoTrack == null)
+                if (type == TrackType.Video)
                 {
-                    PlayingType = PlayingType.Music;
-                }
-                else
-                {
-                    PlayingType = PlayingType.Video;
-
-                    if (Locator.NavigationService.CurrentPage != VLCPage.VideoPlayerPage)
+                    if (PlaybackService.PlayingType == PlayingType.Video && Locator.NavigationService.CurrentPage != VLCPage.VideoPlayerPage)
                     {
                         Locator.NavigationService.Go(VLCPage.VideoPlayerPage);
                     }
@@ -1059,11 +573,21 @@ namespace VLC_WinRT.ViewModels
             });
         }
 
-        public async void UpdateCurrentChapter()
+        private async void Playback_MediaParsed(ParsedStatus parsedStatus)
         {
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
             {
+                OnPropertyChanged(nameof(Chapters));
                 OnPropertyChanged(nameof(CurrentChapter));
+            });
+        }
+
+        private async void PlaybackService_MediaSet(IMediaItem media)
+        {
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                OnPropertyChanged(nameof(CanGoPrevious));
+                OnPropertyChanged(nameof(CanGoNext));
             });
         }
         #endregion
@@ -1072,7 +596,7 @@ namespace VLC_WinRT.ViewModels
 
         public void SetMediaTransportControls(SystemMediaTransportControls systemMediaTransportControls)
         {
-#if WINDOWS_PHONE_APP
+#if TWO_PROCESS_BGA
             if (BackgroundAudioHelper.Instance?.CurrentState == MediaPlayerState.Playing)
             {
 
@@ -1162,24 +686,42 @@ namespace VLC_WinRT.ViewModels
             });
         }
 
+        public async Task ClearMediaTransportControls()
+        {
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                try
+                {
+                    if (_systemMediaTransportControls == null) return;
+                    LogHelper.Log("PLAYVIDEO: Updating SystemMediaTransportControls");
+                    SystemMediaTransportControlsDisplayUpdater updater = _systemMediaTransportControls.DisplayUpdater;
+                    updater.ClearAll();
+                }
+                catch (Exception e)
+                {
+                    LogHelper.Log(StringsHelper.ExceptionToString(e));
+                }
+            });
+        }
+
         private async void SystemMediaTransportControlsOnButtonPressed(SystemMediaTransportControls sender, SystemMediaTransportControlsButtonPressedEventArgs args)
         {
             switch (args.Button)
             {
                 case SystemMediaTransportControlsButton.Pause:
+                    PlaybackService.Pause();
+                    break;
                 case SystemMediaTransportControlsButton.Play:
-                    _mediaService.Pause();
+                    PlaybackService.Play();
                     break;
                 case SystemMediaTransportControlsButton.Stop:
-                    Stop();
+                    PlaybackService.Stop();
                     break;
                 case SystemMediaTransportControlsButton.Previous:
-                    if (Locator.MediaPlaybackViewModel.PlayingType == PlayingType.Music)
-                        await TrackCollection.PlayPrevious();
+                    await PlaybackService.PlayPrevious();
                     break;
                 case SystemMediaTransportControlsButton.Next:
-                    if (Locator.MediaPlaybackViewModel.PlayingType == PlayingType.Music)
-                        await TrackCollection.PlayNext();
+                    await PlaybackService.PlayNext();
                     break;
             }
         }
@@ -1205,20 +747,9 @@ namespace VLC_WinRT.ViewModels
         }
         #endregion
 
-        public void Pause()
-        {
-            try
-            {
-                _mediaService.Pause();
-            }
-            catch
-            {
-            }
-        }
-
         public void Dispose()
         {
-            Stop();
+            PlaybackService.Stop();
         }
     }
 }

@@ -31,7 +31,7 @@ using System.Diagnostics;
 
 namespace VLC_WinRT.ViewModels.RemovableDevicesVM
 {
-    public class VLCExplorerViewModel : BindableBase, IDisposable
+    public class VLCExplorerViewModel : BindableBase
     {
         #region private props
         private ExternalDeviceService _deviceService;
@@ -97,52 +97,49 @@ namespace VLC_WinRT.ViewModels.RemovableDevicesVM
             set { SetProperty(ref _fileExplorerVisibility, value); }
         }
         #endregion
+
         public async Task OnNavigatedTo()
         {
-            var musicFolder = new LocalFileExplorerViewModel(KnownFolders.MusicLibrary, RootFolderType.Library);
-            musicFolder.LogoGlyph = App.Current.Resources["MusicFilledSymbol"] as string;
-            await AddFolder(musicFolder);
-            var videoFolder = new LocalFileExplorerViewModel(KnownFolders.VideosLibrary, RootFolderType.Library);
-            videoFolder.LogoGlyph = App.Current.Resources["VideoFilledSymbol"] as string;
-            await AddFolder(videoFolder);
-            var picFolder = new LocalFileExplorerViewModel(KnownFolders.PicturesLibrary, RootFolderType.Library);
-            picFolder.LogoGlyph = App.Current.Resources["BuddySymbol"] as string;
-            await AddFolder(picFolder);
+            if (FileExplorersGrouped.Any() == false)
+            {
+                var categories = Enum.GetValues(typeof(RootFolderType)).Cast<RootFolderType>();
+                foreach ( var c in categories )
+                    await CreateFolderCategory(c);
+                var musicFolder = new LocalFileExplorerViewModel(KnownFolders.MusicLibrary, RootFolderType.Library);
+                musicFolder.LogoGlyph = App.Current.Resources["MusicFilledSymbol"] as string;
+                await AddToFolder(musicFolder);
+                var videoFolder = new LocalFileExplorerViewModel(KnownFolders.VideosLibrary, RootFolderType.Library);
+                videoFolder.LogoGlyph = App.Current.Resources["VideoFilledSymbol"] as string;
+                await AddToFolder(videoFolder);
+#if STARTS
+#else
+                var picFolder = new LocalFileExplorerViewModel(KnownFolders.PicturesLibrary, RootFolderType.Library);
+                picFolder.LogoGlyph = App.Current.Resources["BuddySymbol"] as string;
+                await AddToFolder(picFolder);
+#endif
 
 #if WINDOWS_PHONE_APP
-            Task.Run(() => InitializeSDCard());
-#else
+                await InitializeSDCard();
+#endif
+            }
+#if !WINDOWS_PHONE_APP
             _deviceService = App.Container.Resolve<ExternalDeviceService>();
             _deviceService.ExternalDeviceAdded += DeviceAdded;
             _deviceService.ExternalDeviceRemoved += DeviceRemoved;
 #endif
-            FileExplorerVisibility = Visibility.Collapsed;
-            RootFoldersVisibility = Visibility.Visible;
+            if (CurrentStorageVM == null)
+            {
+                FileExplorerVisibility = Visibility.Collapsed;
+                RootFoldersVisibility = Visibility.Visible;
+            }
             await Task.Run(async () =>
             {
-                Locator.VLCService.MediaListItemAdded += VLCService_MediaListItemAdded;
-                Locator.VLCService.MediaListItemDeleted += VLCService_MediaListItemDeleted;
-                await Locator.VLCService.InitDiscoverer();
+                Locator.MediaLibrary.MediaListItemAdded += VLCService_MediaListItemAdded;
+                Locator.MediaLibrary.MediaListItemDeleted += VLCService_MediaListItemDeleted;
+                await Locator.MediaLibrary.InitDiscoverer();
             });
         }
 
-
-        public void Dispose()
-        {
-#if WINDOWS_PHONE_APP
-#elif WINDOWS_APP
-            _deviceService.ExternalDeviceAdded -= DeviceAdded;
-            _deviceService.ExternalDeviceRemoved -= DeviceRemoved;
-            _deviceService.Dispose();
-            _deviceService = null;
-#endif
-            Locator.VLCService.MediaListItemAdded -= VLCService_MediaListItemAdded;
-            Locator.VLCService.MediaListItemDeleted -= VLCService_MediaListItemDeleted;
-            Locator.VLCService.DisposeDiscoverer();
-            _currentStorageVM = null;
-            _fileExplorersGrouped?.Clear();
-            GC.Collect();
-        }
 
         private async Task InitializeSDCard()
         {
@@ -152,7 +149,7 @@ namespace VLC_WinRT.ViewModels.RemovableDevicesVM
             {
                 var external = new LocalFileExplorerViewModel(cards[0], RootFolderType.ExternalDevice);
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => external.LogoGlyph = App.Current.Resources["SDCardSymbol"] as string);
-                await AddFolder(external);
+                await AddToFolder(external);
             }
         }
 
@@ -170,7 +167,7 @@ namespace VLC_WinRT.ViewModels.RemovableDevicesVM
             {
                 var external = new LocalFileExplorerViewModel(StorageDevice.FromId(newId), RootFolderType.ExternalDevice, newId);
                 await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => external.LogoGlyph = App.Current.Resources["USBFilledSymbol"] as string);
-                await AddFolder(external);
+                await AddToFolder(external);
             }
             catch { }
         }
@@ -188,7 +185,6 @@ namespace VLC_WinRT.ViewModels.RemovableDevicesVM
                         CurrentStorageVM = null;
                     }
                     FileExplorersGrouped.FirstOrDefault(x => x.Contains(removedViewModel)).Remove(removedViewModel);
-                    GC.Collect();
                 }
             });
         }
@@ -198,8 +194,11 @@ namespace VLC_WinRT.ViewModels.RemovableDevicesVM
         {
             try
             {
-                var localNetwork = new VLCFileExplorerViewModel(media, RootFolderType.Network);
-                await AddFolder(localNetwork);
+                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
+                {
+                    var localNetwork = new VLCFileExplorerViewModel(media, RootFolderType.Network);
+                    await AddToFolder(localNetwork);
+                });
             }
             catch (Exception e)
             {
@@ -218,15 +217,16 @@ namespace VLC_WinRT.ViewModels.RemovableDevicesVM
             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => fileExType.Remove(fileEx));
         }
 
-        async Task AddFolder(FileExplorer fileEx)
+        async Task CreateFolderCategory(RootFolderType type)
+        {
+            var category = new GroupItemList<FileExplorer>() { Key = type };
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => FileExplorersGrouped.Add(category));
+        }
+
+        async Task AddToFolder(FileExplorer fileEx)
         {
             var key = FileExplorersGrouped.FirstOrDefault(x => (RootFolderType)x.Key == fileEx.Type);
-            if (key == null)
-            {
-                key = new GroupItemList<FileExplorer>(fileEx) { Key = fileEx.Type };
-                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () => FileExplorersGrouped.Add(key));
-            }
-            else await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () => key.Add(fileEx));
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => key.Add(fileEx));
         }
 
         public void GoBackToRootFolders()

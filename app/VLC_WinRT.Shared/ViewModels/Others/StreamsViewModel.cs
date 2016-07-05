@@ -10,16 +10,15 @@ using VLC_WinRT.Commands;
 using Windows.UI.Xaml;
 using Autofac;
 using VLC_WinRT.Services.RunTime;
+using VLC_WinRT.Commands.StreamsLibrary;
 
 namespace VLC_WinRT.ViewModels.Others
 {
     public class StreamsViewModel : BindableBase, IDisposable
     {
-        private Visibility _noInternetPlaceholderEnabled = Visibility.Collapsed;
-        
-        public IEnumerable<IGrouping<string, StreamMedia>> StreamsHistoryAndFavoritesGrouped
+        public IEnumerable<StreamMedia> StreamsHistoryAndFavoritesGrouped
         {
-            get { return Locator.MediaLibrary.Streams?.GroupBy(x => x.Id.ToString()); }
+            get { return Locator.MediaLibrary.Streams?.OrderBy(x => x.Order); }
         }
 
         public bool IsCollectionEmpty
@@ -27,11 +26,7 @@ namespace VLC_WinRT.ViewModels.Others
             get { return !Locator.MediaLibrary.Streams.Any(); }
         }
 
-        public Visibility NoInternetPlaceholderEnabled
-        {
-            get { return _noInternetPlaceholderEnabled; }
-            set { SetProperty(ref _noInternetPlaceholderEnabled, value); }
-        }
+        public Visibility NoInternetPlaceholderEnabled => NetworkListenerService.IsConnected ? Visibility.Collapsed : Visibility.Visible;
 
         public PlayNetworkMRLCommand PlayStreamCommand { get; } = new PlayNetworkMRLCommand();
 
@@ -45,7 +40,7 @@ namespace VLC_WinRT.ViewModels.Others
             Dispose();
         }
 
-        public async Task Initialize()
+        async Task Initialize()
         {
             App.Container.Resolve<NetworkListenerService>().InternetConnectionChanged += StreamsViewModel_InternetConnectionChanged;
             Locator.MediaLibrary.Streams.CollectionChanged += Streams_CollectionChanged;
@@ -54,7 +49,7 @@ namespace VLC_WinRT.ViewModels.Others
 
         private async void StreamsViewModel_InternetConnectionChanged(object sender, Model.Events.InternetConnectionChangedEventArgs e)
         {
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => NoInternetPlaceholderEnabled = e.IsConnected ? Visibility.Collapsed : Visibility.Visible);
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => OnPropertyChanged(nameof(NoInternetPlaceholderEnabled)));
         }
 
         private async void Streams_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)

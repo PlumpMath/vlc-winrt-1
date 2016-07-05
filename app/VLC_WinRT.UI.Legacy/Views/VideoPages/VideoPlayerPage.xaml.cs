@@ -65,7 +65,7 @@ namespace VLC_WinRT.Views.VideoPages
                 VisualStateManager.GoToState(this, nameof(FullscreenState), false);
             }
 
-            Locator.MediaPlaybackViewModel._mediaService.SetSizeVideoPlayer((uint)Math.Ceiling(App.RootPage.SwapChainPanel.ActualWidth), (uint)Math.Ceiling(App.RootPage.SwapChainPanel.ActualHeight));
+            Locator.MediaPlaybackViewModel.PlaybackService.SetSizeVideoPlayer((uint)Math.Ceiling(App.RootPage.SwapChainPanel.ActualWidth), (uint)Math.Ceiling(App.RootPage.SwapChainPanel.ActualHeight));
             Locator.VideoPlayerVm.ChangeSurfaceZoom(Locator.VideoPlayerVm.CurrentSurfaceZoom);
             DisplayOrHide(true);
         }
@@ -79,6 +79,7 @@ namespace VLC_WinRT.Views.VideoPages
             AppViewHelper.SetTitleBarTitle(Locator.VideoPlayerVm.CurrentVideo?.Name);
 
             // UI interactions
+            Locator.MediaPlaybackViewModel.MouseService.Start();
             Locator.MediaPlaybackViewModel.MouseService.OnHidden += MouseCursorHidden;
             Locator.MediaPlaybackViewModel.MouseService.OnMoved += MouseMoved;
             RootGrid.Tapped += RootGrid_Tapped;
@@ -103,8 +104,17 @@ namespace VLC_WinRT.Views.VideoPages
             AppViewHelper.SetTitleBarTitle();
             App.RootPage.SwapChainPanel.Visibility = Visibility.Collapsed;
             App.SplitShell.FooterVisibility = AppBarClosedDisplayMode.Minimal;
-            
+
             Locator.VideoPlayerVm.OnNavigatedFrom();
+            if (AppViewHelper.GetFullscreen())
+                AppViewHelper.SetFullscreen();
+
+            Locator.MediaPlaybackViewModel.MouseService.Stop();
+            Locator.MediaPlaybackViewModel.MouseService.OnHidden -= MouseCursorHidden;
+            Locator.MediaPlaybackViewModel.MouseService.OnMoved -= MouseMoved;
+            controlsTimer.Tick -= ControlsTimer_Tick;
+            controlsTimer.Stop();
+            Locator.MediaPlaybackViewModel.MouseService.ShowCursor();
         }
 
         private void ControlsTimer_Tick(object sender, object e)
@@ -300,7 +310,7 @@ namespace VLC_WinRT.Views.VideoPages
                 menu.Items.Add(new MenuFlyoutItem()
                 {
                     Name = "PlayPauseItem",
-                    Command = new ActionCommand(() => Locator.MediaPlaybackViewModel.Pause())
+                    Command = new ActionCommand(() => Locator.MediaPlaybackViewModel.PlaybackService.Pause())
                 });
 
                 menu.Items.Add(new MenuFlyoutItem()

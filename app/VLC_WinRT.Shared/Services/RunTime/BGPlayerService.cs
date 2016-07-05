@@ -1,4 +1,4 @@
-﻿#if WINDOWS_PHONE_APP
+﻿#if TWO_PROCESS_BGA
 using System;
 using VLC_WinRT.Services.Interface;
 using System.Threading.Tasks;
@@ -30,6 +30,7 @@ namespace VLC_WinRT.Services.RunTime
         public event Action<long> OnLengthChanged;
         public event Action OnEndReached;
         public event Action<int> OnBuffering;
+        public event Action<int> MediaSet_FromBackground;
 
         public event EventHandler<MediaState> StatusChanged;
         public event TimeChanged TimeChanged;
@@ -47,43 +48,46 @@ namespace VLC_WinRT.Services.RunTime
         public BGPlayerService()
         {
             PlayerInstanceReady = new TaskCompletionSource<bool>();
-            Initialize(null);
+            Task.Run(() => Initialize(null));
         }
 
-        public async Task Initialize(object mediaElement = null)
+        public Task Initialize(object mediaElement = null)
         {
-            ApplicationSettingsHelper.SaveSettingsValue(BackgroundAudioConstants.AppState, BackgroundAudioConstants.ForegroundAppActive);
-
-            AddMediaPlayerEventHandlers();
-            
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+            return DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, async () =>
             {
-                dispatchTimer = new DispatcherTimer()
-                {
-                    Interval = TimeSpan.FromSeconds(1),
-                };
-                dispatchTimer.Tick += dispatchTimer_Tick;
-            });
+                ApplicationSettingsHelper.SaveSettingsValue(BackgroundAudioConstants.AppState, BackgroundAudioConstants.ForegroundAppActive);
 
-            try
-            {
-                if (Instance?.CurrentState == MediaPlayerState.Playing)
+                AddMediaPlayerEventHandlers();
+
+                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
                 {
-                    if (!dispatchTimer.IsEnabled)
+                    dispatchTimer = new DispatcherTimer()
                     {
-                        await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+                        Interval = TimeSpan.FromSeconds(1),
+                    };
+                    dispatchTimer.Tick += dispatchTimer_Tick;
+                });
+
+                try
+                {
+                    if (Instance?.CurrentState == MediaPlayerState.Playing)
+                    {
+                        if (!dispatchTimer.IsEnabled)
                         {
-                            Locator.MediaPlaybackViewModel.IsPlaying = true;
-                            Instance_CurrentStateChanged(null, new RoutedEventArgs());
-                        });
+                            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+                            {
+                                Locator.MediaPlaybackViewModel.PlaybackService.IsRunning = true;
+                                Instance_CurrentStateChanged(null, new RoutedEventArgs());
+                            });
+                        }
                     }
+                    if (Instance != null && PlayerInstanceReady.Task?.Status != TaskStatus.RanToCompletion)
+                        PlayerInstanceReady.SetResult(true);
                 }
-                if (Instance != null && PlayerInstanceReady.Task?.Status != TaskStatus.RanToCompletion)
-                    PlayerInstanceReady.SetResult(true);
-            }
-            catch
-            {
-            }
+                catch
+                {
+                }
+            });
         }
 
         /// <summary>
@@ -116,12 +120,12 @@ namespace VLC_WinRT.Services.RunTime
                         case BackgroundAudioConstants.BackgroundTaskCancelled:
                             await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
                             {
-                                Locator.MediaPlaybackViewModel.IsPlaying = false;
+                                Locator.MediaPlaybackViewModel.PlaybackService.IsRunning = false;
                             });
                             break;
                         case BackgroundAudioConstants.MFFailed:
                             LogHelper.Log("VLC process is aware MF Background Media Player failed to open the file : " + e.Data[key]);
-                            await Locator.MediaPlaybackViewModel.SetMedia(Locator.MusicPlayerVM.CurrentTrack, true);
+                            await Locator.MediaPlaybackViewModel.PlaybackService.SetPlaylist(null, false, true, Locator.MusicPlayerVM.CurrentTrack);
                             MediaFailed?.Invoke(this, new EventArgs());
                             break;
                     }
@@ -156,13 +160,23 @@ namespace VLC_WinRT.Services.RunTime
         async void Instance_BufferingProgressChanged(object sender, RoutedEventArgs e)
         {
             OnBuffering?.Invoke((int)(Instance?.BufferingProgress * 100));
-            await Locator.MusicPlayerVM.UpdateTrackFromMF();
+
+            if (!ApplicationSettingsHelper.Contains(BackgroundAudioConstants.CurrentTrack))
+                return;
+
+            int index = (int)ApplicationSettingsHelper.ReadSettingsValue(BackgroundAudioConstants.CurrentTrack);
+            MediaSet_FromBackground?.Invoke(index);
         }
 
         void Instance_MediaOpened(object sender, RoutedEventArgs e)
         {
             OnLengthChanged?.Invoke((long)GetLength());
-            Locator.MusicPlayerVM.UpdateTrackFromMF();
+
+            if (!ApplicationSettingsHelper.Contains(BackgroundAudioConstants.CurrentTrack))
+                return;
+
+            int index = (int)ApplicationSettingsHelper.ReadSettingsValue(BackgroundAudioConstants.CurrentTrack);
+            MediaSet_FromBackground?.Invoke(index);
         }
 
         private void Instance_MediaEnded(object sender, RoutedEventArgs e)
@@ -241,7 +255,7 @@ namespace VLC_WinRT.Services.RunTime
                 {
                     case MediaPlayerState.Closed:
                         // If MediaPlayer was closed, run it agaain
-                        await Locator.MediaPlaybackViewModel.SetMedia(Locator.MediaPlaybackViewModel.CurrentMedia, false);
+                        await Locator.MediaPlaybackViewModel.PlaybackService.SetPlaylist(null, false, false, Locator.MediaPlaybackViewModel.CurrentMedia);
                         break;
                     case MediaPlayerState.Playing:
                         Instance?.Pause();

@@ -22,7 +22,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|ARM'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\ARM\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NETFX_CORE;WINDOWS_UWP;CODE_ANALYSIS;TWO_PROCESS_BGA</DefineConstants>
     <NoWarn>;2008</NoWarn>
     <DebugType>full</DebugType>
     <PlatformTarget>ARM</PlatformTarget>
@@ -32,7 +32,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|ARM'">
     <OutputPath>bin\ARM\Release\</OutputPath>
-    <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
+    <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP;TWO_PROCESS_BGA</DefineConstants>
     <Optimize>true</Optimize>
     <NoWarn>;2008</NoWarn>
     <DebugType>pdbonly</DebugType>
@@ -45,7 +45,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;NETFX_CORE;WINDOWS_UWP;CODE_ANALYSIS;STARTS;CODE_ANALYSIS</DefineConstants>
     <NoWarn>;2008</NoWarn>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -187,8 +187,11 @@
     <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\access\libzip_plugin.dll">
       <Link>plugins\access\libzip_plugin.dll</Link>
     </Content>
-    <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\audio_filter\liba52tospdif_plugin.dll">
-      <Link>plugins\audio_filter\liba52tospdif_plugin.dll</Link>
+    <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\access\libdsm_plugin.dll">
+      <Link>plugins\access\libdsm_plugin.dll</Link>
+    </Content>
+    <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\audio_filter\libtospdif_plugin.dll">
+      <Link>plugins\audio_filter\libtospdif_plugin.dll</Link>
     </Content>
     <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\audio_filter\libaudiobargraph_a_plugin.dll">
       <Link>plugins\audio_filter\libaudiobargraph_a_plugin.dll</Link>
@@ -207,9 +210,6 @@
     </Content>
     <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\audio_filter\libdtstofloat32_plugin.dll">
       <Link>plugins\audio_filter\libdtstofloat32_plugin.dll</Link>
-    </Content>
-    <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\audio_filter\libdtstospdif_plugin.dll">
-      <Link>plugins\audio_filter\libdtstospdif_plugin.dll</Link>
     </Content>
     <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\audio_filter\libequalizer_plugin.dll">
       <Link>plugins\audio_filter\libequalizer_plugin.dll</Link>
@@ -625,9 +625,6 @@
     <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\services_discovery\libpodcast_plugin.dll">
       <Link>plugins\services_discovery\libpodcast_plugin.dll</Link>
     </Content>
-    <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\services_discovery\libsap_plugin.dll">
-      <Link>plugins\services_discovery\libsap_plugin.dll</Link>
-    </Content>
     <Content Include="..\..\libvlc\Universal\vlc-$(TargetedSDKArchitecture)\$(Configuration)\plugins\services_discovery\libupnp_plugin.dll">
       <Link>plugins\services_discovery\libupnp_plugin.dll</Link>
     </Content>
@@ -875,13 +872,6 @@
       <Link>plugins\visualization\libvisual_plugin.dll</Link>
     </Content>
     <Content Include="Properties\Default.rd.xml" />
-    <Content Include="Assets\LockScreenLogo.scale-200.png" />
-    <Content Include="Assets\SplashScreen.scale-200.png" />
-    <Content Include="Assets\Square150x150Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.scale-200.png" />
-    <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="VLCCommands.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -893,8 +883,8 @@
     <SDKReference Include="Microsoft.VCLibs.120, Version=14.0">
       <Name>Microsoft Visual C++ 2013 Runtime Package for Windows Universal</Name>
     </SDKReference>
-    <SDKReference Include="SQLite.UWP.2015, Version=3.12.2">
-      <Name>SQLite for Universal Windows Platform %28SQLite.UWP.2015, Version=3.12.2%29</Name>
+    <SDKReference Include="SQLite.UWP.2015, Version=3.13.0">
+      <Name>SQLite for Universal Windows Platform</Name>
     </SDKReference>
     <SDKReference Include="WindowsDesktop, Version=10.0.10586.0">
       <Name>Windows Desktop Extensions for the UWP</Name>
@@ -912,8 +902,12 @@
       <Name>libVLCX.UWP</Name>
     </ProjectReference>
     <ProjectReference Include="..\VLC_WinRT.ShareBackground\VLC_WinRT.ShareBackground.csproj">
-      <Project>{b1e774a5-87a6-4d23-bec1-ad157333f69f}</Project>
+      <Project>{B1E774A5-87A6-4D23-BEC1-AD157333F69F}</Project>
       <Name>VLC_WinRT.ShareBackground</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\VLC_WinRT.UniversalBackgroundAudioPlayer\VLC_WinRT.UniversalBackgroundAudioPlayer.csproj">
+      <Project>{a9bcc539-e818-4097-87b3-c2035d1ca4a4}</Project>
+      <Name>VLC_WinRT.UniversalBackgroundAudioPlayer</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

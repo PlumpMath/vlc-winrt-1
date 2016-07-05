@@ -29,7 +29,7 @@
             </Grid.ColumnDefinitions>
             <Image Grid.Column="0"
                    Grid.RowSpan="3"
-                   Source="{Binding Thumbnail}"
+                   Source="{Binding AlbumImage}"
                    MaxHeight="60"
                    MaxWidth="60"
                    Stretch="UniformToFill" />
@@ -70,7 +70,7 @@
                           Label="{Binding Source={StaticResource Strings}, Path=PlayTrack}"
                           Style="{StaticResource AppBarButtonStyleHorizontal}"
                           Foreground="{ThemeResource MainColor}"
-                          Command="{Binding TrackClicked}"
+                          Command="{Binding TrackClickedCommand}"
                           CommandParameter="{Binding}"
                           Click="ActionButton_Click">
                 <AppBarButton.Icon>
@@ -146,7 +146,7 @@
                       Style="{StaticResource AppBarButtonStyleHorizontal}"
                       Command="{Binding Source={StaticResource Locator}, Path=MusicPlayerVM.AddToPlayingPlaylist}"
                       CommandParameter="{Binding}"
-                      Visibility="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel.TrackCollection.IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                      Visibility="{Binding Source={StaticResource Locator}, Path=MediaPlaybackViewModel.PlaybackService.IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
             <AppBarButton.Icon>
                 <FontIcon Glyph="{StaticResource OrderedListSymbol}"
                           FontFamily="{StaticResource VLCFont}" />

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using VLC_WinRT.Helpers;
 using VLC_WinRT.Model;
 using VLC_WinRT.SharedBackground.Helpers.MusicPlayer;
@@ -18,8 +19,32 @@ namespace VLC_WinRT.UI.UWP.Views.SettingsPages
         public SettingsPage()
         {
             this.InitializeComponent();
+            this.Loaded += SettingsPage_Loaded;
         }
-        
+
+        private void SettingsPage_Loaded(object sender, RoutedEventArgs e)
+        {
+#if STARTS
+            if (DeviceTypeHelper.GetDeviceType() != DeviceTypeEnum.Tablet)
+            {
+                foreach (var element in MusicSettingsPanel.Children)
+                {
+                    if ((string)((FrameworkElement)element).Tag == "STARTS")
+                    {
+                        element.Visibility = Visibility.Collapsed;
+                    }
+                }
+                foreach (var element in VideoSettingsPanel.Children)
+                {
+                    if ((string)((FrameworkElement)element).Tag == "STARTS")
+                    {
+                        element.Visibility = Visibility.Collapsed;
+                    }
+                }
+            }
+#endif
+        }
+
         void FocusTextBox_LostFocus(object sender, RoutedEventArgs e)
         {
             Locator.MainVM.KeyboardListenerService.CanListen = true;
@@ -38,7 +63,7 @@ namespace VLC_WinRT.UI.UWP.Views.SettingsPages
             string pd = (string)ApplicationSettingsHelper.ReadSettingsValue("LastFmPassword");
 
             if (string.IsNullOrEmpty(pseudo) || string.IsNullOrEmpty(pd)) return;
-            ErrorConnectLastFmTextBox.Text = Utils.Strings.Connecting;
+            ErrorConnectLastFmTextBox.Text = Strings.Connecting;
             ErrorConnectLastFmTextBox.Visibility = Visibility.Visible;
             ErrorConnectLastFmTextBox.Foreground = new SolidColorBrush(Colors.Gray);
             var success = await lastFm.ConnectOperation(pseudo, pd);
@@ -51,7 +76,7 @@ namespace VLC_WinRT.UI.UWP.Views.SettingsPages
             else
             {
                 ErrorConnectLastFmTextBox.Foreground = new SolidColorBrush(Colors.Red);
-                ErrorConnectLastFmTextBox.Text = Utils.Strings.CheckCredentials;
+                ErrorConnectLastFmTextBox.Text = Strings.CheckCredentials;
                 Locator.SettingsVM.LastFmIsConnected = false;
             }
         }
@@ -61,15 +86,21 @@ namespace VLC_WinRT.UI.UWP.Views.SettingsPages
             Flyout.ShowAttachedFlyout(sender as FrameworkElement);
         }
 
-        private void ForceRefreshLanguage(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void ForceRefreshLanguage(object sender, RoutedEventArgs e)
         {
             Locator.NavigationService.RefreshCurrentPage();
         }
 
-        private void ApplyColorButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
+        private void ApplyColorButton_Click(object sender, RoutedEventArgs e)
         {
             Launcher.LaunchUriAsync(new Uri($"vlc://goto/?page={nameof(VLCPage.SettingsPageUI)}"));
             App.Current.Exit();
+        }
+
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.AddedItems.Any())
+                Locator.SettingsVM.Equalizer = e.AddedItems[0] as VLCEqualizer;
         }
     }
 }

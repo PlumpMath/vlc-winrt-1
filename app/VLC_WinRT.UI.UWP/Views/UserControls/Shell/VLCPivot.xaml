@@ -20,7 +20,8 @@
             <Grid x:Name="TitleBar"
                   Loaded="TitleBar_Loaded"
                   Background="Transparent">
-                <Path Data="{StaticResource VLCFlatPath}"
+                <Path x:Name="VLCIcon"
+                      Data="{StaticResource VLCFlatPath}"
                       Fill="{ThemeResource MainColor}"
                       Stretch="Uniform"
                       HorizontalAlignment="Left"
@@ -38,30 +39,5 @@
                 <shellControls:HomePageController Tag="Pivot" />
             </DataTemplate>
         </Pivot.ItemTemplate>
-
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup>
-                <VisualState x:Name="Snap">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="0" />
-                    </VisualState.StateTriggers>
-
-                    <VisualState.Setters>
-                        <Setter Target="TitleBar.Visibility"
-                                Value="Collapsed" />
-                    </VisualState.Setters>
-                </VisualState>
-                <VisualState x:Name="Wide">
-                    <VisualState.StateTriggers>
-                        <AdaptiveTrigger MinWindowWidth="790" />
-                    </VisualState.StateTriggers>
-
-                    <VisualState.Setters>
-                        <Setter Target="TitleBar.Visibility"
-                                Value="Visible" />
-                    </VisualState.Setters>
-                </VisualState>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
     </Pivot>
 </UserControl>

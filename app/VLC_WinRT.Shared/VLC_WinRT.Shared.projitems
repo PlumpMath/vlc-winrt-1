@@ -62,20 +62,20 @@
     <Compile Include="$(MSBuildThisFileDirectory)Commands\MusicLibrary\PinArtistCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\MusicLibrary\SeeArtistShowsCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\MusicLibrary\ShowCreateNewPlaylistPane.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Commands\PlayNetworkMRLCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\Settings\AddFolderToLibrary.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\Settings\RemoveFolderFromMusicLibrary.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\Settings\RemoveFolderFromVideoLibrary.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Commands\StreamsLibrary\DeleteStreamCommand.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Commands\StreamsLibrary\FavoriteStreamCommand.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Commands\StreamsLibrary\PlayNetworkMRLCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoLibrary\CloseFlyoutAndPlayVideoCommand.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoLibrary\DeleteStreamCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoLibrary\FavoriteVideoCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoLibrary\PickMediaCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoLibrary\TVShowClickedCommand.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\DownloadSubtitleCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\InitPiPCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\OpenSubtitleCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\PlayVideoCommand.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\SetAudioTrackCommand.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\SetSubtitleTrackCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\StopVideoCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VideoPlayer\SurfaceZoomToggleCommand.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Commands\VLCFileExplorer\GoUpperFolderCommand.cs" />
@@ -175,7 +175,10 @@
     <Compile Include="$(MSBuildThisFileDirectory)Model\Panel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\PlayerEngine.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\PlayingType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Model\PlaylistItem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\Search\SearchResult.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Model\SerializableDictionary.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Model\SerializableList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\Stream\StreamMedia.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\Subtitle.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Model\Video\GestureActionType.cs" />
@@ -198,6 +201,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Services\RunTime\KeyboardListenerService.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Services\RunTime\MFService.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Services\RunTime\NavigationService.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Services\RunTime\PlaybackService.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Services\RunTime\VideoMetaService.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Services\RunTime\VLCService.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Services\RunTime\MouseService.cs" />
@@ -212,6 +216,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Utils\ConvertImage.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utils\DispatchHelper.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utils\Extensions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utils\FileUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utils\GroupItemList.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utils\Numbers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Utils\OpenMenuFlyoutAction.cs" />
@@ -222,7 +227,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MediaPlaybackViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MusicVM\MusicLibraryVM.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MusicVM\MusicPlayerVM.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)ViewModels\MusicVM\PlaylistItem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\Others\BackerCountryViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\Others\SearchViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\Others\SpecialThanksViewModel.cs" />
@@ -236,6 +240,57 @@
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\VideoVM\VideoPlayerVM.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)Assets\NewStoreLogo.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\NewStoreLogo.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\NewStoreLogo.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\NewStoreLogo.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\NewStoreLogo.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\SplashScreen.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\SplashScreen.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\SplashScreen.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\SplashScreen.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\SplashScreen.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square150x150Logo.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square150x150Logo.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square150x150Logo.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square150x150Logo.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square310x310Logo.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square310x310Logo.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square310x310Logo.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square310x310Logo.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square310x310Logo.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-16.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-16_altform-unplated.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-24.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-256.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-256_altform-unplated.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-32.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-32_altform-unplated.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-48.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square44x44Logo.targetsize-48_altform-unplated.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square71x71Logo.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square71x71Logo.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square71x71Logo.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square71x71Logo.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Square71x71Logo.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StoreLogo.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StoreLogo.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StoreLogo.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StoreLogo.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\StoreLogo.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Wide310x150Logo.scale-100.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Wide310x150Logo.scale-125.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Wide310x150Logo.scale-150.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Wide310x150Logo.scale-400.png" />
+    <Content Include="$(MSBuildThisFileDirectory)NotoSans-Regular.ttf" />
     <Content Include="$(MSBuildThisFileDirectory)Assets\DeezerApplats_RVB_Noir.png" />
     <Content Include="$(MSBuildThisFileDirectory)Assets\Icons\circle-fab.png" />
     <Content Include="$(MSBuildThisFileDirectory)Assets\Icons\circleShadow.png" />
@@ -258,7 +313,6 @@
     <Content Include="$(MSBuildThisFileDirectory)Assets\Icons\Video.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="$(MSBuildThisFileDirectory)segoeui.ttf" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="$(MSBuildThisFileDirectory)Services\Mocks\" />
@@ -271,5 +325,9 @@
   <ItemGroup>
     <XliffResource Include="$(MSBuildThisFileDirectory)MultilingualResources\VLC_WinRT.Shared.fr-FR.xlf" />
     <XliffResource Include="$(MSBuildThisFileDirectory)MultilingualResources\VLC_WinRT.Shared.ja-JP.xlf" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)Assets\windows_cone_icon.svg" />
+    <None Include="$(MSBuildThisFileDirectory)Assets\windows_cone_icon_w.svg" />
   </ItemGroup>
 </Project>

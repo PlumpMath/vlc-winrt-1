@@ -25,12 +25,14 @@ using VLC_WinRT.Helpers.MusicLibrary;
 using VLC_WinRT.Helpers.VideoLibrary;
 using VLC_WinRT.Model.Stream;
 using VLC_WinRT.Services.RunTime;
+using libVLCX;
 
 namespace VLC_WinRT.Model.Library
 {
     public class MediaLibrary
     {
         #region properties
+        private object discovererLock = new object();
         private bool _alreadyIndexedOnce = false;
         public bool AlreadyIndexedOnce => _alreadyIndexedOnce;
 
@@ -72,6 +74,11 @@ namespace VLC_WinRT.Model.Library
         public SmartCollection<TvShow> Shows { get; private set; } = new SmartCollection<TvShow>();
 
         public SmartCollection<StreamMedia> Streams { get; private set; } = new SmartCollection<StreamMedia>();
+
+
+        Dictionary<string, MediaDiscoverer> discoverers;
+        public event MediaListItemAdded MediaListItemAdded;
+        public event MediaListItemDeleted MediaListItemDeleted;
         #endregion
         #region mutexes
         public TaskCompletionSource<bool> ContinueIndexing { get; set; }
@@ -172,25 +179,7 @@ namespace VLC_WinRT.Model.Library
             videoDatabase.Drop();
             videoDatabase.Initialize();
         }
-
-        public async Task PerformRoutineCheckIfNotBusy()
-        {
-            // Routine check to add new files if there are new ones
-            //if (!IsBusy)
-            //{
-            //    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
-            //    {
-            //        IsBusy = true;
-            //    });
-            await StartIndexing();
-            //    await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
-            //    {
-            //        IsBusy = false;
-            //        Locator.MainVM.InformationText = "";
-            //    });
-            //}
-        }
-
+        
         public async Task Initialize()
         {
             MediaLibraryIndexingState = LoadingState.Loading;
@@ -259,20 +248,16 @@ namespace VLC_WinRT.Model.Library
 
                 await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(KnownFolders.MusicLibrary));
 
-                if (await KnownFolders.PicturesLibrary.ContainsFolderAsync("Camera Roll"))
-                {
-                    var cameraRoll = await KnownFolders.PicturesLibrary.GetFolderAsync("Camera Roll");
-                    await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(cameraRoll), true);
-                }
+                await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(KnownFolders.CameraRoll), true);
 
                 // Cortana gets all those artists, albums, songs names
                 var artists = await LoadArtists(null);
                 if (artists != null)
-                    await CortanaHelper.SetPhraseList("artistName", artists.Select(x => x.Name).ToList());
+                    await CortanaHelper.SetPhraseList("artistName", artists.Where(x => !string.IsNullOrEmpty(x.Name)).Select(x => x.Name).ToList());
 
-                var songs = await LoadTracks();
-                if (songs != null)
-                    await CortanaHelper.SetPhraseList("songName", songs.Select(x => x.Name).ToList());
+                var albums = await LoadAlbums(null);
+                if (albums != null)
+                    await CortanaHelper.SetPhraseList("albumName", albums.Where(x => !string.IsNullOrEmpty(x.Name)).Select(x => x.Name).ToList());
             }
             catch (Exception e)
             {
@@ -300,6 +285,12 @@ namespace VLC_WinRT.Model.Library
                 if (VLCFileExtensions.AudioExtensions.Contains(item.FileType.ToLower()))
                 {
                     if (await trackDatabase.DoesTrackExist(item.Path))
+                        return;
+
+                    // Groove Music puts its cache into this folder in Music.
+                    // If the file is in this folder or subfolder, don't add it to the collection,
+                    // since we can't play it anyway because of the DRM.
+                    if (item.Path.Contains("Music Cache"))
                         return;
 
                     var media = await Locator.VLCService.GetMediaFromPath(item.Path);
@@ -394,8 +385,6 @@ namespace VLC_WinRT.Model.Library
 
                     var video = await MediaLibraryHelper.GetVideoItem(item);
                     
-                    await videoDatabase.Insert(video);
-
                     if (video.IsTvShow)
                     {
                         await AddTvShow(video);
@@ -409,6 +398,7 @@ namespace VLC_WinRT.Model.Library
                     {
                         Videos.Add(video);
                     }
+                    await videoDatabase.Insert(video);
                 }
                 else
                 {
@@ -467,6 +457,87 @@ namespace VLC_WinRT.Model.Library
             }
         }
 
+        public async Task<bool> InitDiscoverer()
+        {
+            if (Locator.VLCService.Instance == null)
+            {
+                await Locator.VLCService.Initialize();
+            }
+            await Locator.VLCService.PlayerInstanceReady.Task;
+            if (Locator.VLCService.Instance == null)
+                return false;
+
+            await MediaItemDiscovererSemaphoreSlim.WaitAsync();
+            var tcs = new TaskCompletionSource<bool>();
+            await Task.Run(() =>
+            {
+                lock (discovererLock)
+                {
+                    if (discoverers == null)
+                    {
+                        discoverers = new Dictionary<string, MediaDiscoverer>();
+                        var discoverersDesc = Locator.VLCService.Instance.mediaDiscoverers(MediaDiscovererCategory.Lan);
+                        foreach (var discDesc in discoverersDesc)
+                        {
+                            var discoverer = new MediaDiscoverer(Locator.VLCService.Instance, discDesc.name());
+
+                            var mediaList = discoverer.mediaList();
+                            if (mediaList == null)
+                                tcs.TrySetResult(false);
+
+                            var eventManager = mediaList.eventManager();
+                            eventManager.onItemAdded += MediaListItemAdded;
+                            eventManager.onItemDeleted += MediaListItemDeleted;
+
+                            discoverers.Add(discDesc.name(), discoverer);
+                        }
+                    }
+
+                    foreach (var discoverer in discoverers)
+                    {
+                        if (!discoverer.Value.isRunning())
+                            discoverer.Value.start();
+                    }
+                    tcs.TrySetResult(true);
+                }
+            });
+            await tcs.Task;
+            MediaItemDiscovererSemaphoreSlim.Release();
+            return tcs.Task.Result;
+        }
+
+        public async Task DisposeDiscoverer()
+        {
+            await Task.Run(() =>
+            {
+                lock (discovererLock)
+                {
+                    foreach (var discoverer in discoverers)
+                    {
+                        if (discoverer.Value.isRunning())
+                            discoverer.Value.stop();
+                    }
+                }
+            });
+        }
+
+        public async Task<MediaList> DiscoverMediaList(Media media)
+        {
+            var tcs = new TaskCompletionSource<MediaList>();
+            if (media.parsedStatus() == ParsedStatus.Done)
+                tcs.TrySetResult(media.subItems());
+
+            media.eventManager().OnParsedChanged += (ParsedStatus s) =>
+            {
+                if (s != ParsedStatus.Done)
+                    return;
+                tcs.TrySetResult(media.subItems());
+            };
+            await MediaItemDiscovererSemaphoreSlim.WaitAsync();
+            media.parseWithOptions(ParseFlags.Local | ParseFlags.Network | ParseFlags.Interact, 5000);
+            MediaItemDiscovererSemaphoreSlim.Release();
+            return tcs.Task.Result;
+        }
         #endregion
 
         //============================================
@@ -818,6 +889,11 @@ namespace VLC_WinRT.Model.Library
             }
             return stream;
         }
+
+        public Task Update(StreamMedia stream)
+        {
+            return streamsDatabase.Update(stream);
+        }
         #endregion
         #endregion
 
@@ -895,9 +971,10 @@ namespace VLC_WinRT.Model.Library
             return false;
         }
 
-        public async Task AddNewPlaylist(string trackCollectionName)
+        public async Task<PlaylistItem> AddNewPlaylist(string trackCollectionName)
         {
-            if (string.IsNullOrEmpty(trackCollectionName)) return;
+            if (string.IsNullOrEmpty(trackCollectionName))
+                return null;
             PlaylistItem trackCollection = null;
             trackCollection = await trackCollectionRepository.LoadFromName(trackCollectionName);
             if (trackCollection != null)
@@ -911,6 +988,7 @@ namespace VLC_WinRT.Model.Library
                 await trackCollectionRepository.Add(trackCollection);
                 TrackCollections.Add(trackCollection);
             }
+            return trackCollection;
         }
 
         public Task DeletePlaylistTrack(TrackItem track, PlaylistItem trackCollection)
@@ -942,23 +1020,43 @@ namespace VLC_WinRT.Model.Library
                 TrackCollectionId = Locator.MusicLibraryVM.CurrentTrackCollection.Id,
             });
             if (displayToastNotif)
-                ToastHelper.Basic(string.Format(Strings.TrackAddedToYourPlaylist, trackItem.Name));
+                ToastHelper.Basic(string.Format(Strings.TrackAddedToYourPlaylist, trackItem.Name), false, string.Empty, "playlistview");
         }
 
         public async Task AddToPlaylist(AlbumItem albumItem)
         {
             if (Locator.MusicLibraryVM.CurrentTrackCollection == null) return;
             var playlistId = Locator.MusicLibraryVM.CurrentTrackCollection.Id;
+            Locator.MusicLibraryVM.CurrentTrackCollection.Playlist.AddRange(albumItem.Tracks);
             foreach (TrackItem trackItem in albumItem.Tracks)
             {
-                Locator.MusicLibraryVM.CurrentTrackCollection.Playlist.Add(trackItem);
+                await tracklistItemRepository.Add(new TracklistItem()
+                {
+                    TrackId = trackItem.Id,
+                    TrackCollectionId = playlistId,
+                }).ConfigureAwait(false);
+            }
+            ToastHelper.Basic(string.Format(Strings.TrackAddedToYourPlaylist, albumItem.Name), false, string.Empty, "playlistview");
+        }
+
+        public async Task AddToPlaylist(ArtistItem artistItem)
+        {
+            if (Locator.MusicLibraryVM.CurrentTrackCollection == null) return;
+            var playlistId = Locator.MusicLibraryVM.CurrentTrackCollection.Id;
+
+            var songs = await Locator.MediaLibrary.LoadTracksByArtistId(artistItem.Id);
+            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => Locator.MusicLibraryVM.CurrentTrackCollection.Playlist.AddRange(songs));
+
+            foreach (TrackItem trackItem in songs)
+            {
                 await tracklistItemRepository.Add(new TracklistItem()
                 {
                     TrackId = trackItem.Id,
                     TrackCollectionId = playlistId,
                 });
             }
-            ToastHelper.Basic(string.Format(Strings.TrackAddedToYourPlaylist, albumItem.Name));
+
+            ToastHelper.Basic(string.Format(Strings.TrackAddedToYourPlaylist, artistItem.Name), false, string.Empty, "playlistview");
         }
 
         public async Task UpdateTrackCollection(PlaylistItem trackCollection)
@@ -996,8 +1094,8 @@ namespace VLC_WinRT.Model.Library
                         albumDatabase.Remove(album);
                         artist.Albums.Remove(artistalbum);
                     }
-                    var playingTrack = Locator.MediaPlaybackViewModel.TrackCollection.Playlist.FirstOrDefault(x => x.Id == trackItem.Id);
-                    if (playingTrack != null) Locator.MediaPlaybackViewModel.TrackCollection.Playlist.Remove(playingTrack);
+                    var playingTrack = Locator.MediaPlaybackViewModel.PlaybackService.Playlist.FirstOrDefault(x => x.Id == trackItem.Id);
+                    if (playingTrack != null) Locator.MediaPlaybackViewModel.PlaybackService.Playlist.Remove(playingTrack);
                 }
                 catch
                 {
@@ -1127,7 +1225,7 @@ namespace VLC_WinRT.Model.Library
             {
                 Streams?.Remove(collectionStream);
             }
-            return streamsDatabase.Delete(stream);
+            return DeleteStream(stream);
         }
         #endregion
         #region database operations

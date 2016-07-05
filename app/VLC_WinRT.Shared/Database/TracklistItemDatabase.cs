@@ -5,6 +5,7 @@ using VLC_WinRT.Model.Music;
 using VLC_WinRT.ViewModels.MusicVM;
 using System.Collections.Generic;
 using VLC_WinRT.Utils;
+using VLC_WinRT.Model;
 
 namespace VLC_WinRT.Database
 {

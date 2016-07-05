@@ -44,13 +44,11 @@ namespace VLC_WinRT.ViewModels
         #region private props
         private KeyboardListenerService keyboardListenerService;
         private Panel _currentPanel;
-        private bool _isInternet;
         private bool _preventAppExit = false;
         private string _informationText;
         private bool _isBackground = false;
         static bool? _isWindows10;
-
-        // Navigation props
+        
         #endregion
 
         #region public props
@@ -61,15 +59,7 @@ namespace VLC_WinRT.ViewModels
         }
         
         public KeyboardListenerService KeyboardListenerService { get { return keyboardListenerService; } }
-        public bool IsInternet
-        {
-            get { return _isInternet; }
-            set
-            {
-                InformationText = !value ? Strings.NoInternetConnection : "";
-                SetProperty(ref _isInternet, value);
-            }
-        }
+
 
         public GoBackCommand GoBackCommand { get; private set; } = new GoBackCommand();
 
@@ -81,7 +71,7 @@ namespace VLC_WinRT.ViewModels
 
         public ActionCommand GoToLicensePageCommand { get; private set; } = new ActionCommand(() => Locator.NavigationService.Go(VLCPage.LicensePage));
 
-        public ActionCommand GotoSearchPageCommand { get; private set; } = new ActionCommand(() => Locator.NavigationService.Go(VLCPage.SearchPage));
+        public ActionCommand GoToSearchPageCommand { get; private set; } = new ActionCommand(() => Locator.NavigationService.Go(VLCPage.SearchPage));
 
         public ActionCommand GoToFeedbackPageCommand { get; private set; } = new ActionCommand(() => Locator.NavigationService.Go(VLCPage.FeedbackPage));
 
@@ -129,8 +119,6 @@ namespace VLC_WinRT.ViewModels
         public MainVM()
         {
             keyboardListenerService = App.Container.Resolve<KeyboardListenerService>();
-            App.Container.Resolve<NetworkListenerService>().InternetConnectionChanged += networkListenerService_InternetConnectionChanged;
-            _isInternet = NetworkListenerService.IsConnected;
 
             Panels.Add(new Panel(Strings.Videos, VLCPage.MainPageVideo, App.Current.Resources["VideoSymbol"].ToString(), App.Current.Resources["VideoFilledSymbol"].ToString()));
             Panels.Add(new Panel(Strings.Music, VLCPage.MainPageMusic, App.Current.Resources["WaveSymbol"].ToString(), App.Current.Resources["WaveFilledSymbol"].ToString()));
@@ -140,20 +128,21 @@ namespace VLC_WinRT.ViewModels
             CoreWindow.GetForCurrentThread().Activated += ApplicationState_Activated;
         }
 
-        private void ApplicationState_Activated(object sender, WindowActivatedEventArgs e)
+        private async void ApplicationState_Activated(object sender, WindowActivatedEventArgs e)
         {
             if (e.WindowActivationState == CoreWindowActivationState.Deactivated)
             {
                 IsBackground = true;
                 if (Locator.MediaPlaybackViewModel.CurrentMedia == null) return;
                 if (!Locator.MediaPlaybackViewModel.IsPlaying) return;
+                
                 // If we're playing a video, just pause.
-                if (Locator.MediaPlaybackViewModel.PlayingType == PlayingType.Video)
+                if (Locator.MediaPlaybackViewModel.PlaybackService.PlayingType == PlayingType.Video)
                 {
                     // TODO: Route Video Player calls through Media Service
                     if (!Locator.SettingsVM.ContinueVideoPlaybackInBackground)
                     {
-                        Locator.MediaPlaybackViewModel._mediaService.Pause();
+                        Locator.MediaPlaybackViewModel.PlaybackService.Pause();
                     }
                 }
             }
@@ -161,11 +150,6 @@ namespace VLC_WinRT.ViewModels
             {
                 IsBackground = false;
             }
-        }
-
-        async void networkListenerService_InternetConnectionChanged(object sender, Model.Events.InternetConnectionChangedEventArgs e)
-        {
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () => IsInternet = e.IsConnected);
         }
         
         public ObservableCollection<Panel> Panels

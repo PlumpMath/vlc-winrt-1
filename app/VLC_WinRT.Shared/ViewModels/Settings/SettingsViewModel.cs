@@ -198,7 +198,7 @@ namespace VLC_WinRT.ViewModels.Settings
             }
         }
 
-        public IList<VLCEqualizer> Presets => _equalizerPresets ?? (_equalizerPresets = App.Container.Resolve<VLCService>().GetEqualizerPresets());
+        public IList<VLCEqualizer> Presets => _equalizerPresets ?? (_equalizerPresets = Locator.VLCService.GetEqualizerPresets());
 
         public VLCEqualizer Equalizer
         {
@@ -221,7 +221,7 @@ namespace VLC_WinRT.ViewModels.Settings
                     return;
                 SetProperty(ref _vlcEqualizer, value);
                 ApplicationSettingsHelper.SaveSettingsValue(nameof(Equalizer), value.Index);
-                App.Container.Resolve<VLCService>().SetEqualizer(value);
+                Locator.VLCService.SetEqualizer(value);
             }
         }
 
@@ -353,13 +353,13 @@ namespace VLC_WinRT.ViewModels.Settings
         {
             get
             {
-                var notificationOnNewSong = ApplicationSettingsHelper.ReadSettingsValue("NotificationOnNewSong");
-                _notificationOnNewSong = notificationOnNewSong as bool? ?? false;
+                var notificationOnNewSong = ApplicationSettingsHelper.ReadSettingsValue(nameof(NotificationOnNewSong));
+                _notificationOnNewSong = notificationOnNewSong as bool? ?? true;
                 return _notificationOnNewSong;
             }
             set
             {
-                ApplicationSettingsHelper.SaveSettingsValue("NotificationOnNewSong", value);
+                ApplicationSettingsHelper.SaveSettingsValue(nameof(NotificationOnNewSong), value);
                 SetProperty(ref _notificationOnNewSong, value);
             }
         }
