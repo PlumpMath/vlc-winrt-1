@@ -9,6 +9,13 @@ using Windows.UI.Xaml.Media.Animation;
 using VLC_WinRT.Helpers;
 using Windows.ApplicationModel.Core;
 using Windows.UI.ViewManagement;
+using VLC_WinRT.UI.Legacy.Views.UserControls.Shell;
+#if RS1
+using Microsoft.Graphics.Canvas.Effects;
+using Windows.UI.Composition;
+using Windows.UI.Xaml.Hosting;
+#endif
+using VLC_WinRT.UI.UWP.Views.UserControls;
 
 namespace VLC_WinRT.Controls
 {
@@ -44,12 +51,14 @@ namespace VLC_WinRT.Controls
         private const string FlyoutPlaneProjectionName = "FlyoutPlaneProjection";
         private const string FlyoutGridContainerName = "FlyoutGridContainer";
         private const string FlyoutBackgroundGridName = "FlyoutBackgroundGrid";
+        private const string BackdropGridName = "backDrop";
 
         private Page _page;
         private Grid _flyoutGridContainer;
         private Grid _flyoutBackgroundGrid;
         private ContentPresenter _contentPresenter;
         private Frame _flyoutContentPresenter;
+        private BackDrop _backdrop;
 
         private PlaneProjection _flyoutPlaneProjection;
         private Storyboard _flyoutFadeIn;
@@ -107,7 +116,7 @@ namespace VLC_WinRT.Controls
         }
         #endregion
 
-        #region RightPaneContent Property
+        #region RFlyoutContent Property
 
         public Type FlyoutContent
         {
@@ -123,6 +132,22 @@ namespace VLC_WinRT.Controls
         {
             var that = (SplitShell)dependencyObject;
             that.SetFlyoutContentPresenter(dependencyPropertyChangedEventArgs.NewValue);
+        }
+
+        public bool FlyoutAsHeader
+        {
+            get { return (bool)GetValue(FlyoutAsHeaderProperty); }
+            set { SetValue(FlyoutAsHeaderProperty, value); }
+        }
+
+        public static readonly DependencyProperty FlyoutAsHeaderProperty = DependencyProperty.Register(
+            nameof(FlyoutAsHeader), typeof(bool), typeof(SplitShell),
+            new PropertyMetadata(default(bool), FlyoutAsHeaderPropertyChangedCallback));
+
+        private static void FlyoutAsHeaderPropertyChangedCallback(DependencyObject dO, DependencyPropertyChangedEventArgs args)
+        {
+            var that = (SplitShell)dO;
+            that.Responsive();
         }
         #endregion
 
@@ -159,7 +184,7 @@ namespace VLC_WinRT.Controls
             that.SetFooterContentPresenter(dependencyPropertyChangedEventArgs.NewValue);
         }
         #endregion
-        
+
         public SplitShell()
         {
             DefaultStyleKey = typeof(SplitShell);
@@ -178,6 +203,7 @@ namespace VLC_WinRT.Controls
             _flyoutPlaneProjection = (PlaneProjection)GetTemplateChild(FlyoutPlaneProjectionName);
             _flyoutGridContainer = (Grid)GetTemplateChild(FlyoutGridContainerName);
             _flyoutBackgroundGrid = (Grid)GetTemplateChild(FlyoutBackgroundGridName);
+            _backdrop = (BackDrop)GetTemplateChild(BackdropGridName);
 
             Responsive();
             Window.Current.SizeChanged += Current_SizeChanged;
@@ -187,7 +213,7 @@ namespace VLC_WinRT.Controls
 
             _flyoutGridContainer.Visibility = Visibility.Collapsed;
             if (_flyoutBackgroundGrid != null)
-            _flyoutBackgroundGrid.Tapped += FlyoutGridContainerOnTapped;
+                _flyoutBackgroundGrid.Tapped += FlyoutGridContainerOnTapped;
 
             _windowResizerTimer.Tick += _windowResizerTimer_Tick;
 
@@ -212,19 +238,30 @@ namespace VLC_WinRT.Controls
             Responsive();
         }
 
-        async void Responsive()
+        void Responsive()
         {
             var bottomBarHeight = (_page.BottomAppBar == null) ? 0 : _page.BottomAppBar.ActualHeight;
             var navBarHeight = ApplicationView.GetForCurrentView().VisibleBounds.Height - 16;
-            if (Window.Current.Bounds.Width < 650)
+
+            if (FlyoutAsHeader)
             {
-                _flyoutContentPresenter.Height = navBarHeight;
+                _flyoutContentPresenter.VerticalAlignment = VerticalAlignment.Top;
+                _flyoutContentPresenter.Height = double.NaN;
                 _flyoutContentPresenter.Width = Window.Current.Bounds.Width;
             }
             else
             {
-                _flyoutContentPresenter.Width = 650;
-                _flyoutContentPresenter.Height = navBarHeight < 900 * 0.7 ? navBarHeight : navBarHeight * 0.7;
+                _flyoutContentPresenter.VerticalAlignment = VerticalAlignment.Center;
+                if (Window.Current.Bounds.Width < 650)
+                {
+                    _flyoutContentPresenter.Height = navBarHeight - bottomBarHeight;
+                    _flyoutContentPresenter.Width = Window.Current.Bounds.Width;
+                }
+                else
+                {
+                    _flyoutContentPresenter.Width = 650;
+                    _flyoutContentPresenter.Height = (navBarHeight < 900 * 0.7 ? navBarHeight : navBarHeight * 0.7) - bottomBarHeight;
+                }
             }
             _windowResizerTimer.Stop();
             _windowResizerTimer.Start();
@@ -246,11 +283,18 @@ namespace VLC_WinRT.Controls
         {
             _flyoutFadeIn.Begin();
             IsFlyoutOpen = true;
+#if RS1
+            _backdrop.Show(6);
+#endif
         }
 
         public void HideFlyout()
         {
+#if RS1
+            _backdrop.Hide();
+#endif
             _flyoutFadeOut.Begin();
+            _flyoutContentPresenter.Navigate(typeof(BlankPage));
             IsFlyoutOpen = false;
             FlyoutClosed?.Invoke(null, new EventArgs());
         }
@@ -258,7 +302,7 @@ namespace VLC_WinRT.Controls
         public void HideTopBar()
         {
             _topBarFadeOut.Begin();
-            _contentPresenter.Margin = new Thickness(0, 0, 0, - _page.BottomAppBar.ActualHeight);
+            _contentPresenter.Margin = new Thickness(0, 0, 0, -_page.BottomAppBar?.ActualHeight ?? 0);
             IsTopBarOpen = false;
         }
 

@@ -1,7 +1,8 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:local="using:VLC_WinRT.Controls.Themes"
-                    xmlns:controls="using:VLC_WinRT.Controls">
+                    xmlns:controls="using:VLC_WinRT.Controls"
+                    xmlns:uC="using:VLC_WinRT.UI.UWP.Views.UserControls">
 
     <Style TargetType="controls:SplitShell">
         <Setter Property="Template">
@@ -37,34 +38,14 @@
                                 <Storyboard x:Name="FlyoutFadeIn">
                                     <ObjectAnimationUsingKeyFrames Storyboard.TargetName="FlyoutGridContainer"
                                                                    Storyboard.TargetProperty="Visibility">
-                                        <DiscreteObjectKeyFrame KeyTime="0"
+                                        <DiscreteObjectKeyFrame KeyTime="0:0"
                                                                 Value="Visible" />
                                     </ObjectAnimationUsingKeyFrames>
-                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FlyoutGridContainer"
-                                                                   Storyboard.TargetProperty="Opacity">
-                                        <EasingDoubleKeyFrame KeyTime="0:0:0.4"
-                                                              Value="1">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <ExponentialEase Exponent="4"
-                                                                 EasingMode="EaseOut" />
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                    </DoubleAnimationUsingKeyFrames>
                                 </Storyboard>
                                 <Storyboard x:Name="FlyoutFadeOut">
-                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FlyoutGridContainer"
-                                                                   Storyboard.TargetProperty="Opacity">
-                                        <EasingDoubleKeyFrame KeyTime="0:0:0.4"
-                                                              Value="0">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <ExponentialEase Exponent="4"
-                                                                 EasingMode="EaseOut" />
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                    </DoubleAnimationUsingKeyFrames>
                                     <ObjectAnimationUsingKeyFrames Storyboard.TargetName="FlyoutGridContainer"
                                                                    Storyboard.TargetProperty="Visibility">
-                                        <DiscreteObjectKeyFrame KeyTime="0:0:0.4"
+                                        <DiscreteObjectKeyFrame KeyTime="0:0:1"
                                                                 Value="Collapsed" />
                                     </ObjectAnimationUsingKeyFrames>
                                 </Storyboard>
@@ -75,8 +56,7 @@
                                 </ContentPresenter.RenderTransform>
                             </ContentPresenter>
 
-                            <Grid x:Name="FlyoutGridContainer"
-                                  Opacity="0">
+                            <Grid x:Name="FlyoutGridContainer">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition />
                                     <ColumnDefinition Width="Auto" />
@@ -86,13 +66,16 @@
                                     <PlaneProjection x:Name="FlyoutPlaneProjection" />
                                 </Grid.Projection>
                                 <Grid x:Name="FlyoutBackgroundGrid"
-                                      Background="#B3000000"
+                                      Background="Transparent"
                                       HorizontalAlignment="Stretch"
                                       Grid.Column="0"
-                                      Grid.ColumnSpan="3" />
+                                      Grid.ColumnSpan="3"/>
+                                <uC:BackDrop x:Name="backDrop"
+                                             BlurAmount="6"
+                                             Grid.Column="0"
+                                             Grid.ColumnSpan="3" />
                                 <Frame x:Name="FlyoutContentPresenter"
                                        Grid.Column="1"
-                                       VerticalAlignment="Center"
                                        Style="{StaticResource FrameStyle}" />
                             </Grid>
                         </Grid>

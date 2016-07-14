@@ -91,7 +91,7 @@ namespace VLC_WinRT.Views.VideoPages
             Locator.VideoPlayerVm.OnNavigatedTo();
 
             // Responsive design
-            this.SizeChanged += (s, args) => Responsive();
+            this.SizeChanged += OnSizeChanged;
             Responsive();
 
             // Swapchain animations
@@ -109,12 +109,19 @@ namespace VLC_WinRT.Views.VideoPages
             if (AppViewHelper.GetFullscreen())
                 AppViewHelper.SetFullscreen();
 
+            this.SizeChanged -= OnSizeChanged;
+
             Locator.MediaPlaybackViewModel.MouseService.Stop();
             Locator.MediaPlaybackViewModel.MouseService.OnHidden -= MouseCursorHidden;
             Locator.MediaPlaybackViewModel.MouseService.OnMoved -= MouseMoved;
             controlsTimer.Tick -= ControlsTimer_Tick;
             controlsTimer.Stop();
             Locator.MediaPlaybackViewModel.MouseService.ShowCursor();
+        }
+
+        void OnSizeChanged(object sender, SizeChangedEventArgs args)
+        {
+            Responsive();
         }
 
         private void ControlsTimer_Tick(object sender, object e)
@@ -168,8 +175,7 @@ namespace VLC_WinRT.Views.VideoPages
                 return;
             if (!isVisible)
             {
-                ControlsGridFadeOut.Value = ControlsGrid.ActualHeight + ControlsGrid.Padding.Top +
-                                            ControlsGrid.Padding.Bottom;
+                ControlsGridFadeOut.Value = ControlsBorder.ActualHeight;
                 HeaderGridFadeOut.Value = -HeaderGrid.ActualHeight;
                 FadeOut.Begin();
 
@@ -206,7 +212,7 @@ namespace VLC_WinRT.Views.VideoPages
             VolumeSlider.IsEnabled = !isLocked;
             MenuButton.IsEnabled = !isLocked;
 
-            if (Locator.SettingsVM.ForceLandscape)
+            if (Locator.SettingsVM.ForceLandscape && DeviceTypeHelper.GetDeviceType() != DeviceTypeEnum.Xbox)
             {
                 DisplayInformation.AutoRotationPreferences = DisplayOrientations.Landscape;
             }
@@ -432,7 +438,9 @@ namespace VLC_WinRT.Views.VideoPages
                         });
                     }
                 };
-                //PlaceholderInteractionGrid.ContextFlyout = menu; // RS1-only so this is commented
+#if RS1
+                PlaceholderInteractionGrid.ContextFlyout = menu;
+#endif
             }
         }
 

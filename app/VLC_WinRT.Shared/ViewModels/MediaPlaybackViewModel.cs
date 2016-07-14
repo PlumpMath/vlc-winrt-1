@@ -361,7 +361,7 @@ namespace VLC_WinRT.ViewModels
             {
                 uri = new Uri(streamMrl);
             }
-            catch(UriFormatException ex)
+            catch (UriFormatException ex)
             {
                 var md = new MessageDialog(string.Format("{0} is invalid ({1})", streamMrl, ex.Message), "Invalid URI");
                 await md.ShowAsync();
@@ -413,6 +413,13 @@ namespace VLC_WinRT.ViewModels
             {
                 Locator.VideoPlayerVm.CurrentVideo.TimeWatchedSeconds = (int)((double)Time / 1000); ;
                 await Locator.MediaLibrary.UpdateVideo(Locator.VideoPlayerVm.CurrentVideo).ConfigureAwait(false);
+
+                var file = await ApplicationData.Current.RoamingFolder.CreateFileAsync("roamVideo.txt", CreationCollisionOption.ReplaceExisting);
+                await FileIO.WriteLinesAsync(file, new string[]
+                {
+                    Locator.VideoPlayerVm.CurrentVideo.Name,
+                    Locator.VideoPlayerVm.CurrentVideo.TimeWatchedSeconds.ToString()
+                });
             }
         }
 
