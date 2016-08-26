@@ -38,8 +38,11 @@ namespace VLC.Services.RunTime
             }
         }
 
-        public event EventHandler<string> ExternalDeviceAdded;
-        public event EventHandler<string> ExternalDeviceRemoved;
+        public delegate Task ExternalDeviceAddedEvent(DeviceWatcher sender, string Id);
+        public delegate Task ExternalDeviceRemovedEvent(DeviceWatcher sender, string Id);
+
+        public ExternalDeviceAddedEvent ExternalDeviceAdded;
+        public ExternalDeviceRemovedEvent ExternalDeviceRemoved;
 
         public async Task<IEnumerable<string>> GetExternalDeviceIds()
         {
@@ -49,14 +52,16 @@ namespace VLC.Services.RunTime
             return devices.Select(d => d.Id);
         }
 
-        private void DeviceAdded(DeviceWatcher sender, DeviceInformation args)
+        private async void DeviceAdded(DeviceWatcher sender, DeviceInformation args)
         {
-            ExternalDeviceAdded?.Invoke(this, args.Id);
+            if (ExternalDeviceAdded != null)
+                await ExternalDeviceAdded(sender, args.Id);
         }
 
-        private void DeviceRemoved(DeviceWatcher sender, DeviceInformationUpdate args)
+        private async void DeviceRemoved(DeviceWatcher sender, DeviceInformationUpdate args)
         {
-            ExternalDeviceRemoved?.Invoke(this, args.Id);
+            if (ExternalDeviceRemoved != null)
+                await ExternalDeviceRemoved(sender, args.Id);
         }
     }
 }

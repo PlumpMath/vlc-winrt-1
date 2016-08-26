@@ -51,8 +51,6 @@ namespace VLC.Utils
 
             builder.RegisterType<VLCExplorerViewModel>();
 
-            builder.RegisterType<UploaderViewModel>();
-
             // Register Services
             builder.RegisterType<MetroSlideshow>();
             builder.RegisterType<VLCService>();
@@ -66,6 +64,7 @@ namespace VLC.Utils
             builder.RegisterType<ExternalDeviceService>().SingleInstance();
             builder.RegisterType<SpecialThanksViewModel>();
             builder.RegisterType<ThumbnailService>().SingleInstance();
+            builder.RegisterType<HttpServer>().SingleInstance();
 
             return builder.Build();
         }

@@ -188,13 +188,23 @@ namespace VLC.Services.RunTime
                     {
                         switch (args.VirtualKey)
                         {
-                            case VirtualKey.GamepadB:
-                                Locator.NavigationService.GoBack_Specific();
-                                break;
                             case VirtualKey.GamepadMenu:
                             case VirtualKey.F1:
                                 if (Locator.SettingsVM.MediaCenterMode)
                                     Locator.NavigationService.Go(VLCPage.MainPageXBOX);
+                                break;
+                            case VirtualKey.GamepadA:
+                            case VirtualKey.GamepadLeftThumbstickButton:
+                            case VirtualKey.GamepadDPadDown:
+                            case VirtualKey.GamepadDPadLeft:
+                            case VirtualKey.GamepadDPadUp:
+                            case VirtualKey.GamepadDPadRight:
+                            case VirtualKey.GamepadLeftThumbstickUp:
+                            case VirtualKey.GamepadLeftThumbstickDown:
+                            case VirtualKey.GamepadLeftThumbstickRight:
+                            case VirtualKey.GamepadLeftThumbstickLeft:
+                                if (Locator.NavigationService.CurrentPage == VLCPage.VideoPlayerPage)
+                                    Locator.VideoPlayerVm.RequestChangeControlBarVisibility();
                                 break;
                             default:
                                 break;

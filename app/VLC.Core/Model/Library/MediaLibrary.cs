@@ -26,11 +26,39 @@ using VLC.Helpers.VideoLibrary;
 using VLC.Model.Stream;
 using VLC.Services.RunTime;
 using libVLCX;
+using Windows.Devices.Portable;
+using Windows.Storage.AccessCache;
+using System.IO;
 
 namespace VLC.Model.Library
 {
     public class MediaLibrary
     {
+        public MediaLibrary()
+        {
+            Locator.ExternalDeviceService.ExternalDeviceAdded += ExternalDeviceService_ExternalDeviceAdded;
+            Locator.ExternalDeviceService.ExternalDeviceRemoved += ExternalDeviceService_ExternalDeviceRemoved;
+            Task.Run(() => this.CleanMediaLibrary()).Wait();
+        }
+
+        private async Task ExternalDeviceService_ExternalDeviceAdded(object sender, string id)
+        {
+            var devices = KnownFolders.RemovableDevices;
+            IReadOnlyList<StorageFolder> rootFolders = await devices.GetFoldersAsync();
+
+            foreach (var folder in rootFolders)
+            {
+                if (!StorageApplicationPermissions.FutureAccessList.CheckAccess(folder))
+                    StorageApplicationPermissions.FutureAccessList.Add(folder);
+                await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(folder));
+            }
+        }
+
+        private async Task ExternalDeviceService_ExternalDeviceRemoved(object sender, string id)
+        {
+            await CleanMediaLibrary();
+        }
+
         #region properties
         private object discovererLock = new object();
         private bool _alreadyIndexedOnce = false;
@@ -123,21 +151,24 @@ namespace VLC.Model.Library
             }
         }
 
-        async Task DiscoverMediaItemOrWaitAsync(StorageFile storageItem, bool isCameraRoll)
+        public async Task<bool> DiscoverMediaItemOrWaitAsync(StorageFile storageItem, bool isCameraRoll)
         {
             await MediaItemDiscovererSemaphoreSlim.WaitAsync();
+            bool success;
             try
             {
-                await ParseMediaFile(storageItem, isCameraRoll);
+                success = await ParseMediaFile(storageItem, isCameraRoll);
             }
             catch (Exception e)
             {
                 LogHelper.Log(StringsHelper.ExceptionToString(e));
+                success = false;
             }
             finally
             {
                 MediaItemDiscovererSemaphoreSlim.Release();
             }
+            return success;
         }
 
         public async Task FetchVideoThumbnailOrWaitAsync(VideoItem videoVm)
@@ -240,6 +271,9 @@ namespace VLC.Model.Library
         {
             try
             {
+                StorageFolder folder = await ApplicationData.Current.LocalFolder.CreateFolderAsync("Medias", CreationCollisionOption.OpenIfExists);
+                await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(folder));
+
                 await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(KnownFolders.VideosLibrary));
 
                 await DiscoverMediaItems(await MediaLibraryHelper.GetSupportedFiles(KnownFolders.MusicLibrary));
@@ -274,20 +308,20 @@ namespace VLC.Model.Library
             }
         }
 
-        async Task ParseMediaFile(StorageFile item, bool isCameraRoll)
+        async Task<bool> ParseMediaFile(StorageFile item, bool isCameraRoll)
         {
             try
             {
                 if (VLCFileExtensions.AudioExtensions.Contains(item.FileType.ToLower()))
                 {
                     if (await trackDatabase.DoesTrackExist(item.Path))
-                        return;
+                        return true;
 
                     // Groove Music puts its cache into this folder in Music.
                     // If the file is in this folder or subfolder, don't add it to the collection,
                     // since we can't play it anyway because of the DRM.
-                    if (item.Path.Contains("Music Cache"))
-                        return;
+                    if (item.Path.Contains("Music Cache") || item.Path.Contains("Podcast"))
+                        return false;
 
                     var media = await Locator.VLCService.GetMediaFromPath(item.Path);
                     var mP = await Locator.VLCService.GetMusicProperties(media);
@@ -368,7 +402,8 @@ namespace VLC.Model.Library
                             Path = item.Path,
                             Index = mP.Tracknumber,
                             DiscNumber = mP.DiscNumber,
-                            Genre = mP.Genre
+                            Genre = mP.Genre,
+                            IsAvailable = true,
                         };
                         await trackDatabase.Add(track);
                         AddTrack(track);
@@ -377,7 +412,7 @@ namespace VLC.Model.Library
                 else if (VLCFileExtensions.VideoExtensions.Contains(item.FileType.ToLower()))
                 {
                     if (await videoDatabase.DoesMediaExist(item.Path))
-                        return;
+                        return true;
 
                     var video = await MediaLibraryHelper.GetVideoItem(item);
                     
@@ -399,17 +434,48 @@ namespace VLC.Model.Library
                 else
                 {
                     Debug.WriteLine($"{item.Path} is not a media file");
+                    return false;
                 }
             }
             catch (Exception e)
             {
-#if DEBUG
                 throw e;
-#endif
             }
+
+            return true;
         }
 
+        // Remove items that are no longer reachable.
+        private async Task CleanMediaLibrary()
+        {
+            // Clean videos
+            var videos = await LoadVideos(x => true);
+            foreach (var video in videos)
+            {
+                try
+                {
+                    var file = await StorageFile.GetFileFromPathAsync(video.Path);
+                }
+                catch
+                {
+                    await RemoveMediaFromCollectionAndDatabase(video);
+                }
+            }
 
+            // Clean tracks
+            var tracks = await LoadTracks();
+            foreach (var track in tracks)
+            {
+                try
+                {
+                    var file = await StorageFile.GetFileFromPathAsync(track.Path);
+                }
+                catch
+                {
+                    await RemoveMediaFromCollectionAndDatabase(track);
+                }
+            }
+        }
 
         public void AddArtist(ArtistItem artist)
         {
@@ -990,34 +1056,56 @@ namespace VLC.Model.Library
             }
         }
 
-        public async Task RemoveTrackFromCollectionAndDatabase(TrackItem trackItem)
+        public async Task RemoveMediaFromCollectionAndDatabase(IMediaItem media)
         {
-            await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+            if (media is TrackItem)
             {
-                try
-                {
-                    trackDatabase.Remove(Tracks.FirstOrDefault(x => x.Path == trackItem.Path));
-                    Tracks.Remove(Tracks.FirstOrDefault(x => x.Path == trackItem.Path));
-                    var album = Albums.FirstOrDefault(x => x.Id == trackItem.AlbumId);
-                    album?.Tracks.Remove(album.Tracks.FirstOrDefault(x => x.Path == trackItem.Path));
+                var trackItem = media as TrackItem;
+                var trackDB = await LoadTrackById(trackItem.Id);
+                if (trackDB == null)
+                    return;
+                await trackDatabase.Remove(trackDB);
 
-                    var artist = Artists.FirstOrDefault(x => x.Id == trackItem.ArtistId);
-                    var artistalbum = artist?.Albums.FirstOrDefault(x => x.Id == trackItem.AlbumId);
-                    artistalbum?.Tracks.Remove(artistalbum.Tracks.FirstOrDefault(x => x.Path == trackItem.Path));
-                    if (album.Tracks.Count == 0)
-                    {
-                        // We should remove the album as a whole
-                        Albums.Remove(album);
-                        albumDatabase.Remove(album);
-                        artist.Albums.Remove(artistalbum);
-                    }
-                    var playingTrack = Locator.MediaPlaybackViewModel.PlaybackService.Playlist.FirstOrDefault(x => x.Id == trackItem.Id);
-                    if (playingTrack != null) Locator.MediaPlaybackViewModel.PlaybackService.Playlist.Remove(playingTrack);
-                }
-                catch
+                var albumDB = await LoadAlbum(trackItem.AlbumId);
+                if (albumDB == null)
+                    return;
+                var albumTracks = await LoadTracksByAlbumId(albumDB.Id);
+                if (!albumTracks.Any())
                 {
+                    albumDatabase.Remove(albumDB);
                 }
-            });
+
+                var artistDB = await LoadArtist(trackItem.ArtistId);
+                if (artistDB == null)
+                    return;
+                var artistAlbums = await LoadAlbums(artistDB.Id);
+                if (!artistAlbums.Any())
+                {
+                    await artistDatabase.Remove(artistDB);
+                }
+
+                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    Tracks?.Remove(Tracks?.FirstOrDefault(x => x.Path == trackItem.Path));
+
+                    var playingTrack = Locator.MediaPlaybackViewModel.PlaybackService.Playlist.FirstOrDefault(x => x.Id == trackItem.Id);
+                    if (playingTrack != null)
+                        Locator.MediaPlaybackViewModel.PlaybackService.Playlist.Remove(playingTrack);
+                });
+            }
+            else if (media is VideoItem)
+            {
+                var videoItem = media as VideoItem;
+                var videoDb = await LoadVideoById(videoItem.Id);
+                if (videoDb == null)
+                    return;
+                await videoDatabase.Remove(videoDb);
+
+                await DispatchHelper.InvokeAsync(CoreDispatcherPriority.Low, () =>
+                {
+                    Videos?.Remove(Videos?.FirstOrDefault(x => x.Path == videoItem.Path));
+                });
+            }
         }
 
         public bool AddAlbumToPlaylist(object args)
@@ -1234,11 +1322,17 @@ namespace VLC.Model.Library
         {
             return trackDatabase.LoadTracks();
         }
+
         #endregion
         #region video
         public Task<List<VideoItem>> LoadVideos(Expression<Func<VideoItem, bool>> predicate)
         {
             return videoDatabase.Load(predicate);
+        }
+
+        public Task<VideoItem> LoadVideoById(int id)
+        {
+            return videoDatabase.LoadVideo(id);
         }
 
         public Task UpdateVideo(VideoItem video)

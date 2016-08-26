@@ -70,6 +70,14 @@ namespace VLC.Database
             }
         }
 
+        public async Task<VideoItem> LoadVideo(int videoId)
+        {
+            var connection = new SQLiteAsyncConnection(DbPath);
+            var query = connection.Table<VideoItem>().Where(x => x.Id.Equals(videoId));
+            var result = await query.ToListAsync();
+            return result.FirstOrDefault();
+        }
+
         public Task Insert(VideoItem item)
         {
             var conn = new SQLiteAsyncConnection(DbPath);
@@ -80,6 +88,12 @@ namespace VLC.Database
         {
             var connection = new SQLiteAsyncConnection(DbPath);
             return connection.UpdateAsync(video);
+        }
+
+        public Task Remove(VideoItem video)
+        {
+            var connection = new SQLiteAsyncConnection(DbPath);
+            return connection.DeleteAsync(video);
         }
 
         public Task<List<VideoItem>> GetLastViewed()

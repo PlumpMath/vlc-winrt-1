@@ -7,6 +7,7 @@
       xmlns:userControls="using:VLC.Views.UserControls"
       xmlns:winControls="using:WinRTXamlToolkit.Controls"
       xmlns:musicControls="using:VLC.UI.Legacy.Views.UserControls.MusicControls"
+      xmlns:toolkitControls="using:Microsoft.Toolkit.Uwp.UI.Controls"
       mc:Ignorable="d"
       DataContext="{Binding Source={StaticResource Locator}, Path=SettingsVM}">
     <Pivot Background="{ThemeResource ApplicationOverlayTranslucentThemeColor}">
@@ -15,21 +16,15 @@
                       FontFamily="{StaticResource VLCFont}"
                       FontSize="19"
                       Margin="{StaticResource FrameMarginLeft}"
-                      Foreground="{StaticResource MainColor}"/>
+                      Foreground="{StaticResource MainColor}" />
         </Pivot.LeftHeader>
         <PivotItem Header="{Binding Source={StaticResource Strings}, Path=UserInterface}">
             <Grid>
                 <ScrollViewer Style="{StaticResource VerticalScrollViewerStyle}">
                     <StackPanel Margin="{StaticResource FrameMarginHorizontal}">
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=Theme}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
-
-                        <TextBlock Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}"
-                                   VerticalAlignment="Center"
-                                   Text="{Binding Source={StaticResource Strings}, Path=NeedRestart}" />
+                        <toolkitControls:HeaderedTextBlock HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=Theme}"
+                                                           Text="{Binding Source={StaticResource Strings}, Path=NeedRestart}" />
 
                         <winControls:WrapPanel Orientation="Horizontal">
                             <ToggleSwitch x:Name="AppThemeSwitch"
@@ -75,19 +70,12 @@
                                     Margin="{StaticResource FrameMarginRight}" />
                         </winControls:WrapPanel>
 
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=Languages}"
+                                                           Text="{Binding Source={StaticResource Strings}, Path=SelectLanguageDescription}" />
 
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=Languages}"
-                                   Margin="0,12,0,0"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
-
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=SelectLanguageDescription}"
-                                   Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}"
-                                   VerticalAlignment="Center" />
-
-                        <winControls:WrapPanel Margin="0,12,0,0"
+                        <winControls:WrapPanel Margin="{StaticResource FrameMarginTop}"
                                                Orientation="Horizontal">
                             <ComboBox ItemsSource="{Binding LanguageCollection}"
                                       SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
@@ -106,19 +94,12 @@
                                     Content="Refresh Language" />
                         </winControls:WrapPanel>
 
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=HomePage}"
-                                   Margin="0,12,0,0"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=HomePage}"
+                                                           Text="{Binding Source={StaticResource Strings}, Path=HomePageDescription}" />
 
-                        <TextBlock Grid.Column="2"
-                                   Text="{Binding Source={StaticResource Strings}, Path=HomePageDescription}"
-                                   Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}"
-                                   VerticalAlignment="Center" />
-
-                        <ComboBox Margin="0,12,0,0"
+                        <ComboBox Margin="{StaticResource FrameMarginTop}"
                                   ItemsSource="{Binding HomePageCollection}"
                                   SelectedItem="{Binding HomePage, Mode=TwoWay}"
                                   Style="{StaticResource VLCLightComboBox}"
@@ -130,15 +111,16 @@
                             </ComboBox.ItemTemplate>
                         </ComboBox>
 
-                        <ToggleSwitch Header="Media Center mode"
-                                      IsOn="{Binding MediaCenterMode, Mode=TwoWay}"/>
-                        
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=KeyboardShortcuts}"
-                                   Margin="0,12,0,0"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="Media Center mode"
+                                                           Text="Requires an XBOX One gamepad" />
 
+                        <ToggleSwitch IsOn="{Binding MediaCenterMode, Mode=TwoWay}" />
+
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=KeyboardShortcuts}" />
                         <ListView ItemsSource="{Binding KeyboardActions}"
                                   SelectionMode="None"
                                   Margin="{StaticResource FrameMarginTop}"
@@ -173,15 +155,9 @@
                 <ScrollViewer Style="{StaticResource VerticalScrollViewerStyle}">
                     <StackPanel x:Name="VideoSettingsPanel"
                                 Margin="{StaticResource FrameMarginHorizontal}">
-                        <TextBlock Tag="STARTS"
-                                   Text="{Binding Source={StaticResource Strings}, Path=VideoFolders}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
-                        <TextBlock Tag="STARTS"
-                                   Text="{Binding Source={StaticResource Strings}, Path=VideoFoldersDescription}"
-                                   Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}" />
+                        <toolkitControls:HeaderedTextBlock Header="{Binding Source={StaticResource Strings}, Path=VideoFolders}"
+                                                           HideTextIfEmpty="True"
+                                                           Text="{Binding Source={StaticResource Strings}, Path=VideoFoldersDescription}" />
                         <ListView Tag="STARTS"
                                   ItemsSource="{Binding VideoFolders}"
                                   ItemContainerStyle="{StaticResource ListViewItemStyle}"
@@ -240,21 +216,11 @@
                                 Command="{Binding AddFolderToLibrary}"
                                 CommandParameter="{Binding VideoLibraryId}" />
 
-
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=VideoPlayback}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight"
-                                   Margin="{StaticResource FrameMarginTop}" />
-                        <ToggleSwitch Header="{Binding Source={StaticResource Strings}, Path=HardwareDecoding}"
-                                      IsOn="{Binding HardwareAccelerationEnabled, Mode=TwoWay}"
-                                      Margin="{StaticResource FrameMarginTop}" />
-                        <TextBlock Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}"
-                                   Margin="0,-6,0,12">
-                                <Run Text="{Binding Source={StaticResource Strings}, Path=HardwareDecodingDescription}" />
-                                <Run Text="{Binding Source={StaticResource Strings}, Path=NeedRestart}" />
-                        </TextBlock>
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=HardwareDecoding}"
+                                                           Text="{Binding Source={StaticResource Strings}, Path=HardwareDecodingDescription}" />
+                        <ToggleSwitch IsOn="{Binding HardwareAccelerationEnabled, Mode=TwoWay}" />
 
                         <ToggleSwitch Header="{Binding Source={StaticResource Strings}, Path=ForceLandscape}"
                                       IsOn="{Binding ForceLandscape, Mode=TwoWay}" />
@@ -263,11 +229,9 @@
                                       Header="{Binding Source={StaticResource Strings}, Path=VideoPlaybackInBackground}"
                                       IsOn="{Binding ContinueVideoPlaybackInBackground, Mode=TwoWay}" />
 
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=SubtitlesEncoding}"
-                                   Margin="0,12,0,0"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
+                        <toolkitControls:HeaderedTextBlock HideTextIfEmpty="True"
+                                                           Margin="{StaticResource FrameMarginTop}"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=SubtitlesEncoding}" />
                         <ComboBox Margin="0,12"
                                   ItemsSource="{Binding SubtitlesEncodingValues}"
                                   SelectedItem="{Binding SubtitleEncodingValue, Mode=TwoWay}"
@@ -288,10 +252,9 @@
                 <ScrollViewer Style="{StaticResource VerticalScrollViewerStyle}">
                     <StackPanel x:Name="MusicSettingsPanel"
                                 Margin="{StaticResource FrameMarginHorizontal}">
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=Equalizer}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
+                        <toolkitControls:HeaderedTextBlock HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=Equalizer}" />
+
                         <ComboBox ItemsSource="{Binding Presets}"
                                   SelectedItem="{Binding Equalizer, Mode=TwoWay}"
                                   Width="200"
@@ -311,16 +274,10 @@
 
                         <musicControls:Equalizer EqualizerValue="{Binding Equalizer}" />
 
-                        <TextBlock Tag="STARTS"
-                                   Text="{Binding Source={StaticResource Strings}, Path=MusicFolders}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight"
-                                   Margin="{StaticResource FrameMarginTop}" />
-                        <TextBlock Tag="STARTS"
-                                   Text="{Binding Source={StaticResource Strings}, Path=MusicFoldersDescription}"
-                                   Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}" />
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=MusicFolders}"
+                                                           Text="{Binding Source={StaticResource Strings}, Path=MusicFoldersDescription}" />
                         <ListView Tag="STARTS"
                                   ItemsSource="{Binding MusicFolders}"
                                   ItemContainerStyle="{StaticResource ListViewItemStyle}"
@@ -379,20 +336,16 @@
                                 Command="{Binding AddFolderToLibrary}"
                                 CommandParameter="{Binding MusicLibraryId}" />
 
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=Notifications}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   Margin="{StaticResource FrameMarginTop}"
-                                   FontWeight="SemiLight" />
-                        <ToggleSwitch  Header="{Binding Source={StaticResource Strings}, Path=NotificationWhenSongStarts}"
-                                       IsOn="{Binding NotificationOnNewSong, Mode=TwoWay}"
-                                       Margin="{StaticResource FrameMarginTop}" />
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=Notifications}"
+                                                           Text="{Binding Source={StaticResource Strings}, Path=NotificationWhenSongStarts}" />
 
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=ConnectToLastFM}"
-                                   Margin="{StaticResource FrameMarginTop}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   FontWeight="SemiLight" />
+                        <ToggleSwitch  IsOn="{Binding NotificationOnNewSong, Mode=TwoWay}" />
+
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=ConnectToLastFM}" />
                         <userControls:FocusTextBox Height="30"
                                                    Width="250"
                                                    Margin="0,12,0,12"
@@ -429,16 +382,11 @@
                             </AppBarButton.Icon>
                         </AppBarButton>
 
+                        <toolkitControls:HeaderedTextBlock Margin="{StaticResource FrameMarginTop}"
+                                                           HideTextIfEmpty="True"
+                                                           Header="{Binding Source={StaticResource Strings}, Path=Reset}"
+                                                           Text="This will delete all the playlists made with VLC, and index the music library again." />
 
-                        <TextBlock Text="{Binding Source={StaticResource Strings}, Path=Reset}"
-                                   FontSize="22"
-                                   Style="{StaticResource SubheaderTextBlockStyle}"
-                                   Margin="{StaticResource FrameMarginTop}"
-                                   FontWeight="SemiLight" />
-                        <TextBlock x:Uid="ResetMusicDbHelp"
-                                   Text="This will delete all the playlists made with VLC, and index the music library again."
-                                   Style="{StaticResource BodyTextBlockStyle}"
-                                   Foreground="{ThemeResource PivotHeaderForegroundUnselectedBrush}" />
                         <Button Content="{Binding Source={StaticResource Strings}, Path=ResetMusicDatabase}"
                                 DataContext="{Binding Source={StaticResource Locator}, Path=MusicLibraryVM}"
                                 Command="{Binding IndexMediaLibraryCommand}"

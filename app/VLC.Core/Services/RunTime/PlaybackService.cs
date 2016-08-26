@@ -170,15 +170,20 @@ namespace VLC.Services.RunTime
             {
                 var count = (uint)Playlist.Count;
                 var trackItems = mediaItems.OfType<TrackItem>();
+                var backgroundTrackItems = new List<BackgroundTrackItem>();
                 foreach (var track in trackItems)
                 {
+                    backgroundTrackItems.Add(new BackgroundTrackItem()
+                    {
+                        TrackId = track.Id
+                    });
                     track.Index = count;
                     count++;
                 }
 
                 Playlist.AddRange(mediaItems);
 
-                await Locator.MediaPlaybackViewModel.PlaybackService.BackgroundTrackRepository.Add(trackItems);
+                await Locator.MediaPlaybackViewModel.PlaybackService.BackgroundTrackRepository.Add(backgroundTrackItems);
 
                 IsRunning = true;
             }
@@ -212,7 +217,7 @@ namespace VLC.Services.RunTime
                     return;
                 }
 
-                var trackIds = playlist.Select(node => node.Id);
+                var trackIds = playlist.Select(node => node.TrackId);
                 var restoredplaylist = new SmartCollection<IMediaItem>();
                 foreach (int trackId in trackIds)
                 {
@@ -236,10 +241,11 @@ namespace VLC.Services.RunTime
                     SetCurrentMediaPosition(index);
                 }
 
-                if (CurrentMedia >= restoredplaylist.Count)
+                if (CurrentMedia >= restoredplaylist.Count || CurrentMedia == -1)
                     CurrentMedia = 0;
 
-                await SetPlaylist(restoredplaylist, true, false, restoredplaylist[CurrentMedia]);
+                if (restoredplaylist.Any())
+                    await SetPlaylist(restoredplaylist, true, false, restoredplaylist[CurrentMedia]);
             }
             catch (Exception e)
             {
@@ -254,6 +260,20 @@ namespace VLC.Services.RunTime
 
             if (Playlist.ElementAt(CurrentMedia) != null)
                 Stop();
+
+            if (media is VideoItem || media is TrackItem)
+            {
+                StorageFile currentFile;
+                try
+                {
+                    currentFile = media.File ?? await StorageFile.GetFileFromPathAsync(media.Path);
+                }
+                catch (Exception exception)
+                {
+                    Playback_MediaFileNotFound?.Invoke(media);
+                    return;
+                }
+            }
 
             if (media is VideoItem)
             {
@@ -287,17 +307,6 @@ namespace VLC.Services.RunTime
             else if (media is TrackItem)
             {
                 var track = (TrackItem)media;
-                StorageFile currentTrackFile;
-                try
-                {
-                    currentTrackFile = track.File ?? await StorageFile.GetFileFromPathAsync(track.Path);
-                }
-                catch (Exception exception)
-                {
-                    Playback_MediaFileNotFound?.Invoke(media);
-                    return;
-                }
-
                 await InitializePlayback(track, autoPlay);
 
                 ApplicationSettingsHelper.SaveSettingsValue(nameof(CurrentMedia), CurrentMedia);

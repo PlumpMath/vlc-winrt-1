@@ -18,7 +18,6 @@ namespace VLC.UI.Legacy.Views.MusicPages.ArtistPageControls
             this.Unloaded += MainArtistHeader_Unloaded;
             Window.Current.SizeChanged += Current_SizeChanged;
             Responsive();
-            UpdateBackButton();
         }
 
         private void MainArtistHeader_Unloaded(object sender, RoutedEventArgs e)
@@ -33,6 +32,7 @@ namespace VLC.UI.Legacy.Views.MusicPages.ArtistPageControls
 
         void Responsive()
         {
+            BackgroundEffect.StartAnimation();
             if (Window.Current.Bounds.Width < 650)
             {
                 VisualStateUtilities.GoToState(this, "Snap", false);
